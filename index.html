@@ -5,731 +5,755 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PDF Hunter</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #080c10;
-  --surface: #0d1117;
-  --surface2: #161b22;
-  --border: #21262d;
-  --border2: #30363d;
-  --accent: #f0883e;
-  --accent2: #58a6ff;
-  --green: #3fb950;
-  --red: #f85149;
-  --text: #e6edf3;
-  --muted: #8b949e;
-  --dim: #484f58;
+  --bg:       #08090e;
+  --s1:       #0f1117;
+  --s2:       #16181f;
+  --s3:       #1e2029;
+  --b1:       #1f2130;
+  --b2:       #2a2d3e;
+  --accent:   #6c63ff;
+  --a-dim:    rgba(108,99,255,0.12);
+  --a-mid:    rgba(108,99,255,0.35);
+  --green:    #30d98a;
+  --red:      #ff5f6d;
+  --amber:    #f5a623;
+  --text:     #eeeef5;
+  --t2:       #8b8da8;
+  --t3:       #4a4c65;
+  --mono:     'IBM Plex Mono', monospace;
+  --sans:     'Inter', sans-serif;
+  --radius:   8px;
 }
 
-html { scroll-behavior: smooth; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Syne', sans-serif;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-/* Noise texture overlay */
-body::before {
-  content: '';
-  position: fixed; inset: 0; z-index: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-  pointer-events: none;
-  opacity: 0.5;
-}
-
-/* Scanline effect */
-body::after {
-  content: '';
-  position: fixed; inset: 0; z-index: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,0,0,0.08) 2px,
-    rgba(0,0,0,0.08) 4px
-  );
-  pointer-events: none;
-}
-
-.wrap {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 48px 24px 80px;
-  position: relative; z-index: 1;
-}
-
-/* Header */
-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 52px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 28px;
-}
-
-.logo-block {}
-.logo-tag {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  color: var(--accent);
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  margin-bottom: 8px;
+/* ─── TOP BAR ─────────────────────────────────────────────── */
+#topbar {
+  height: 54px;
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-.logo-tag::before {
-  content: '';
-  display: inline-block;
-  width: 6px; height: 6px;
-  background: var(--accent);
-  border-radius: 50%;
-  animation: pulse 2s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.8); }
-}
-h1 {
-  font-size: 3.2rem;
-  font-weight: 800;
-  line-height: 0.95;
-  letter-spacing: -2px;
-  color: var(--text);
-}
-h1 span { color: var(--accent); }
-
-.header-meta {
-  text-align: right;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  color: var(--dim);
-  line-height: 1.8;
-}
-
-/* Control panel */
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 20px;
-}
-
-.panel-header {
-  padding: 14px 20px;
-  background: var(--surface2);
-  border-bottom: 1px solid var(--border);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  color: var(--muted);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.panel-header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-
-.panel-body { padding: 20px; }
-
-.url-row {
-  display: flex;
   gap: 10px;
-  margin-bottom: 16px;
-}
-
-input[type="url"] {
-  flex: 1;
-  background: var(--bg);
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  padding: 13px 16px;
-  color: var(--text);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-input[type="url"]:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(240,136,62,0.12);
-}
-input[type="url"]::placeholder { color: var(--dim); }
-
-.btn {
-  padding: 13px 22px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.3px;
-  transition: all 0.15s;
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-scan {
-  background: var(--accent);
-  color: #000;
-  min-width: 120px;
-  justify-content: center;
-}
-.btn-scan:hover:not(:disabled) { background: #ff9f56; transform: translateY(-1px); }
-.btn-scan:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-
-.btn-stop {
-  background: transparent;
-  border: 1px solid var(--red);
-  color: var(--red);
-}
-.btn-stop:hover { background: rgba(248,81,73,0.1); }
-
-.btn-dl-all {
-  background: transparent;
-  border: 1px solid var(--green);
-  color: var(--green);
-  font-size: 13px;
-  padding: 9px 18px;
-}
-.btn-dl-all:hover { background: rgba(63,185,80,0.1); }
-
-.btn-copy {
-  background: transparent;
-  border: 1px solid var(--border2);
-  color: var(--muted);
-  font-size: 13px;
-  padding: 9px 18px;
-}
-.btn-copy:hover { color: var(--text); border-color: var(--muted); }
-
-.btn-dl-sel {
-  background: transparent;
-  border: 1px solid var(--accent2);
-  color: var(--accent2);
-  font-size: 13px;
-  padding: 9px 18px;
-}
-.btn-dl-sel:hover { background: rgba(88,166,255,0.1); }
-.btn-dl-sel:disabled { opacity: 0.35; cursor: not-allowed; }
-
-.options-row {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.opt-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--muted);
-  cursor: pointer;
-  user-select: none;
-}
-.opt-label:hover { color: var(--text); }
-
-input[type="checkbox"] {
-  appearance: none;
-  width: 15px; height: 15px;
-  background: var(--bg);
-  border: 1px solid var(--border2);
-  border-radius: 4px;
-  cursor: pointer;
-  position: relative;
+  padding: 0 16px;
+  background: var(--s1);
+  border-bottom: 1px solid var(--b1);
   flex-shrink: 0;
-  transition: all 0.15s;
-}
-input[type="checkbox"]:checked {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-input[type="checkbox"]:checked::after {
-  content: '✓';
-  position: absolute;
-  top: -2px; left: 1px;
-  font-size: 11px;
-  color: #000;
-  font-weight: 700;
+  z-index: 20;
 }
 
-select {
-  background: var(--bg);
-  border: 1px solid var(--border2);
-  border-radius: 6px;
-  padding: 4px 8px;
-  color: var(--text);
+.logo {
+  font-family: var(--mono);
   font-size: 12px;
-  font-family: 'IBM Plex Mono', monospace;
-  outline: none;
-  cursor: pointer;
-}
-
-.divider {
-  width: 1px; height: 16px;
-  background: var(--border2);
-}
-
-/* Status panel */
-#status-panel { display: none; }
-
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 16px;
-}
-
-.stat {
-  background: var(--surface2);
-  padding: 14px 16px;
-  text-align: center;
-}
-.stat-val {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 24px;
   font-weight: 500;
   color: var(--accent);
-  display: block;
-  line-height: 1;
-  margin-bottom: 4px;
-  transition: all 0.2s;
-}
-.stat-val.green { color: var(--green); }
-.stat-label {
-  font-size: 10px;
-  color: var(--dim);
+  letter-spacing: 2px;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  font-family: 'IBM Plex Mono', monospace;
+  flex-shrink: 0;
+  padding-right: 10px;
+  border-right: 1px solid var(--b2);
+  margin-right: 4px;
 }
 
-.progress-track {
-  height: 2px;
-  background: var(--border);
-  border-radius: 1px;
-  margin-bottom: 16px;
-  overflow: hidden;
-}
-.progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), #ff6b35);
-  border-radius: 1px;
-  width: 0%;
-  transition: width 0.4s ease;
-}
-.progress-bar.done { background: var(--green); width: 100% !important; }
-
-.terminal {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px;
-  height: 160px;
-  overflow-y: auto;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  line-height: 1.9;
-}
-.terminal::-webkit-scrollbar { width: 3px; }
-.terminal::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
-.log-line { color: var(--dim); }
-.log-line.info { color: var(--accent2); }
-.log-line.success { color: var(--green); }
-.log-line.error { color: var(--red); }
-
-/* Results */
-#results-panel { display: none; }
-
-.results-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.results-count {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 13px;
-  color: var(--muted);
-}
-.results-count strong { color: var(--green); font-size: 18px; }
-
-.btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-
-/* Filter bar */
-.filter-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-input[type="text"].filter-input {
+#url-input {
   flex: 1;
+  height: 34px;
   background: var(--bg);
-  border: 1px solid var(--border2);
-  border-radius: 6px;
-  padding: 8px 12px;
+  border: 1px solid var(--b2);
+  border-radius: var(--radius);
+  padding: 0 12px;
   color: var(--text);
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--mono);
   font-size: 12px;
   outline: none;
+  min-width: 0;
+  transition: border-color 0.15s;
 }
-input[type="text"].filter-input:focus { border-color: var(--accent2); }
-input[type="text"].filter-input::placeholder { color: var(--dim); }
+#url-input:focus { border-color: var(--accent); }
+#url-input::placeholder { color: var(--t3); }
 
-/* PDF list */
-.pdf-list {
+.top-opt {
+  display: flex; align-items: center; gap: 5px;
+  height: 30px; padding: 0 10px;
+  border: 1px solid var(--b1);
+  border-radius: 6px;
+  font-size: 11px; color: var(--t2);
+  cursor: pointer; user-select: none;
+  transition: all 0.12s; white-space: nowrap; flex-shrink: 0;
+  background: transparent;
+}
+.top-opt input { display: none; }
+.top-opt.on { border-color: var(--a-mid); color: var(--accent); background: var(--a-dim); }
+
+#depth-sel {
+  height: 30px; padding: 0 8px;
+  background: var(--bg); border: 1px solid var(--b1);
+  border-radius: 6px; color: var(--t2);
+  font-size: 11px; font-family: var(--mono);
+  outline: none; cursor: pointer; flex-shrink: 0;
+}
+
+#prescan-filter {
+  height: 30px; padding: 0 10px; width: 150px;
+  background: var(--bg); border: 1px solid var(--b1);
+  border-radius: 6px; color: var(--text);
+  font-size: 11px; font-family: var(--mono);
+  outline: none; flex-shrink: 0;
+}
+#prescan-filter:focus { border-color: var(--b2); }
+#prescan-filter::placeholder { color: var(--t3); }
+
+#scan-btn {
+  height: 34px; padding: 0 18px;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: var(--radius);
+  font-family: var(--sans); font-size: 13px; font-weight: 600;
+  cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; gap: 7px;
+  transition: opacity 0.15s, transform 0.1s;
+}
+#scan-btn:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
+#scan-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+#stop-btn {
+  height: 34px; padding: 0 14px;
+  background: transparent; border: 1px solid var(--red); color: var(--red);
+  border-radius: var(--radius); font-size: 12px;
+  cursor: pointer; flex-shrink: 0; display: none;
+}
+#stop-btn:hover { background: rgba(255,95,109,0.1); }
+
+/* ─── STATUS STRIP ─────────────────────────────────────────── */
+#statusbar {
+  display: none;
+  height: 36px;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  background: var(--s1);
+  border-bottom: 1px solid var(--b1);
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+#statusbar.on { display: flex; }
+
+.sbar-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--amber); flex-shrink: 0;
+}
+.sbar-dot.scanning { animation: pulse 1s ease-in-out infinite; }
+.sbar-dot.done { background: var(--green); }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+
+#sbar-text { color: var(--t2); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbar-num { color: var(--t3); }
+.sbar-num b { color: var(--text); }
+.sbar-num b.hi { color: var(--green); }
+
+.prog-track { width: 100px; height: 2px; background: var(--b2); border-radius: 1px; overflow: hidden; flex-shrink: 0; }
+.prog-bar { height: 100%; background: var(--accent); border-radius: 1px; width: 0%; transition: width 0.4s; }
+.prog-bar.done { background: var(--green); width: 100% !important; }
+
+/* ─── LAYOUT ──────────────────────────────────────────────── */
+#layout {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+}
+#layout.on { display: flex; }
+
+/* ─── SIDEBAR ─────────────────────────────────────────────── */
+#sidebar {
+  width: 250px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-height: 480px;
-  overflow-y: auto;
-  padding-right: 4px;
+  background: var(--s1);
+  border-right: 1px solid var(--b1);
+  overflow: hidden;
 }
-.pdf-list::-webkit-scrollbar { width: 3px; }
-.pdf-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
-.pdf-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border-radius: 0;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.1s;
-}
-.pdf-row:last-child { border-bottom: none; }
-.pdf-row:hover { background: rgba(255,255,255,0.03); }
-
-.pdf-icon {
-  font-size: 16px;
+.sb-head {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--b1);
   flex-shrink: 0;
-  opacity: 0.8;
 }
-
-.pdf-info { flex: 1; min-width: 0; }
-.pdf-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.3;
+.sb-label {
+  font-size: 10px; font-family: var(--mono);
+  color: var(--t3); letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: 8px;
 }
-.pdf-path {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  color: var(--dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
+#folder-search {
+  width: 100%; height: 28px; padding: 0 10px;
+  background: var(--bg); border: 1px solid var(--b1);
+  border-radius: 6px; color: var(--text);
+  font-size: 11px; font-family: var(--mono); outline: none;
 }
+#folder-search:focus { border-color: var(--b2); }
+#folder-search::placeholder { color: var(--t3); }
 
-.pdf-btns { display: flex; gap: 4px; flex-shrink: 0; }
+#folder-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+#folder-list::-webkit-scrollbar { width: 3px; }
+#folder-list::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 2px; }
 
-.btn-sm {
-  padding: 5px 10px;
-  border-radius: 5px;
-  border: 1px solid var(--border2);
-  background: transparent;
-  color: var(--muted);
+.fitem {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px; cursor: pointer;
+  transition: background 0.1s;
+  border-left: 2px solid transparent;
+  user-select: none;
+}
+.fitem:hover { background: var(--s2); }
+.fitem.sel { background: var(--a-dim); border-left-color: var(--accent); }
+
+.fitem-icon { font-size: 12px; flex-shrink: 0; opacity: 0.6; }
+.fitem-names { flex: 1; min-width: 0; }
+.fitem-main { font-size: 12px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fitem-sub { font-size: 10px; color: var(--t3); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+.fitem-ct { font-family: var(--mono); font-size: 10px; color: var(--t3); flex-shrink: 0; }
+.fitem.sel .fitem-ct { color: var(--accent); }
+
+.sb-foot {
+  padding: 10px 14px;
+  border-top: 1px solid var(--b1);
+  flex-shrink: 0;
+  font-family: var(--mono);
   font-size: 11px;
-  font-family: 'IBM Plex Mono', monospace;
-  cursor: pointer;
-  transition: all 0.12s;
-  white-space: nowrap;
+  color: var(--t3);
 }
-.btn-sm:hover { color: var(--text); border-color: var(--muted); background: var(--surface2); }
-.btn-sm.dl { border-color: rgba(63,185,80,0.4); color: var(--green); }
-.btn-sm.dl:hover { background: rgba(63,185,80,0.1); }
+.sb-foot b { color: var(--green); font-size: 14px; }
 
-.empty { text-align: center; padding: 40px; color: var(--dim); font-size: 14px; line-height: 1.6; }
-
-/* Folder sections */
-.folder-section {
-  margin-bottom: 4px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  border-left: 3px solid var(--border2);
-  transition: border-left-color 0.15s;
+/* ─── FILE PANEL ──────────────────────────────────────────── */
+#filepanel {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; background: var(--bg);
 }
-.folder-section:has(.folder-body.open) { border-left-color: var(--accent); }
-.folder-header {
+
+#fp-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  background: var(--s1);
+  border-bottom: 1px solid var(--b1);
+  flex-shrink: 0; flex-wrap: wrap;
+}
+
+#fp-crumb {
+  flex: 1; min-width: 0;
+  font-family: var(--mono); font-size: 12px;
+  color: var(--t2); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+#fp-crumb b { color: var(--text); }
+
+#file-filter {
+  height: 28px; padding: 0 10px; width: 170px;
+  background: var(--bg); border: 1px solid var(--b1);
+  border-radius: 6px; color: var(--text);
+  font-size: 11px; font-family: var(--mono); outline: none;
+}
+#file-filter:focus { border-color: var(--b2); }
+#file-filter::placeholder { color: var(--t3); }
+
+.fp-cb-wrap {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--t2);
+  cursor: pointer; user-select: none; white-space: nowrap;
+}
+
+.abtn {
+  height: 28px; padding: 0 12px;
+  border-radius: 6px; border: 1px solid var(--b2);
+  background: transparent; color: var(--t2);
+  font-size: 11px; cursor: pointer;
+  transition: all 0.1s; white-space: nowrap;
+  font-family: var(--sans); display: flex; align-items: center; gap: 5px;
+}
+.abtn:hover { border-color: var(--t2); color: var(--text); }
+.abtn:disabled { opacity: 0.25; cursor: not-allowed; }
+.abtn.g { border-color: rgba(48,217,138,0.4); color: var(--green); }
+.abtn.g:hover { background: rgba(48,217,138,0.08); border-color: var(--green); }
+.abtn.p { border-color: var(--a-mid); color: var(--accent); }
+.abtn.p:hover { background: var(--a-dim); }
+
+#file-list { flex: 1; overflow-y: auto; }
+#file-list::-webkit-scrollbar { width: 3px; }
+#file-list::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 2px; }
+
+.frow {
   display: flex; align-items: center; gap: 10px;
-  padding: 11px 14px; background: var(--surface2);
-  cursor: pointer; user-select: none; transition: background 0.12s;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--b1);
+  transition: background 0.08s;
 }
-.folder-header:hover { background: #1c2128; }
-.folder-toggle { font-size: 9px; color: var(--dim); transition: transform 0.2s; flex-shrink: 0; display: inline-block; }
-.folder-toggle.open { transform: rotate(90deg); }
-.folder-label { flex: 1; font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.folder-label strong { color: var(--text); font-size: 13px; }
-.folder-count { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); background: var(--bg); padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border); white-space: nowrap; flex-shrink: 0; }
-.folder-dl { padding: 5px 12px; border-radius: 5px; border: 1px solid rgba(63,185,80,0.5); background: transparent; color: var(--green); font-size: 11px; font-family: 'IBM Plex Mono', monospace; cursor: pointer; flex-shrink: 0; transition: background 0.12s; }
-.folder-dl:hover { background: rgba(63,185,80,0.12); }
-.folder-body { display: none; background: var(--bg); }
-.folder-body.open { display: block; }
+.frow:last-child { border-bottom: none; }
+.frow:hover { background: var(--s1); }
 
-/* Spinner */
+.frow-icon { font-size: 13px; flex-shrink: 0; opacity: 0.5; }
+.frow-name {
+  flex: 1; min-width: 0;
+  font-family: var(--mono); font-size: 11px; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.frow-btns { display: flex; gap: 4px; flex-shrink: 0; }
+
+.xbtn {
+  height: 24px; padding: 0 9px;
+  border-radius: 5px; border: 1px solid var(--b2);
+  background: transparent; color: var(--t2);
+  font-size: 10px; cursor: pointer;
+  transition: all 0.1s; white-space: nowrap;
+  font-family: var(--mono); text-decoration: none;
+  display: flex; align-items: center;
+}
+.xbtn:hover { border-color: var(--t2); color: var(--text); }
+.xbtn.dl { border-color: rgba(48,217,138,0.35); color: var(--green); }
+.xbtn.dl:hover { background: rgba(48,217,138,0.08); }
+
+/* ─── EMPTY STATE ─────────────────────────────────────────── */
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%; gap: 10px;
+  color: var(--t3); font-family: var(--mono); font-size: 12px;
+  text-align: center; line-height: 1.8;
+}
+.empty-state .ei { font-size: 36px; opacity: 0.25; margin-bottom: 4px; }
+
+/* ─── WELCOME SCREEN ──────────────────────────────────────── */
+#welcome {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+#welcome.hidden { display: none; }
+
+.welcome-inner {
+  margin: auto;
+  text-align: center;
+  padding: 40px;
+}
+.welcome-logo {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.welcome-title {
+  font-size: 42px; font-weight: 600;
+  letter-spacing: -2px; line-height: 1;
+  color: var(--text); margin-bottom: 12px;
+}
+.welcome-title span { color: var(--accent); }
+.welcome-sub { color: var(--t3); font-size: 13px; line-height: 1.7; max-width: 380px; }
+.welcome-hints {
+  margin-top: 28px;
+  display: flex; gap: 12px;
+  justify-content: center; flex-wrap: wrap;
+}
+.hint-chip {
+  background: var(--s2); border: 1px solid var(--b1);
+  border-radius: 6px; padding: 8px 14px;
+  font-size: 11px; font-family: var(--mono);
+  color: var(--t2); text-align: left;
+}
+.hint-chip b { color: var(--text); display: block; margin-bottom: 2px; }
+
+/* ─── INPUTS ──────────────────────────────────────────────── */
+input[type="checkbox"] {
+  appearance: none;
+  width: 13px; height: 13px;
+  background: var(--bg); border: 1px solid var(--b2);
+  border-radius: 3px; cursor: pointer;
+  position: relative; flex-shrink: 0; transition: all 0.1s;
+}
+input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+input[type="checkbox"]:checked::after {
+  content: '✓'; position: absolute; top: -2px; left: 1px;
+  font-size: 9px; color: #fff; font-weight: 700;
+}
+input[type="checkbox"]:indeterminate { background: var(--a-dim); border-color: var(--accent); }
+input[type="checkbox"]:indeterminate::after {
+  content: '–'; position: absolute; top: -2px; left: 2px;
+  font-size: 10px; color: var(--accent); font-weight: 700;
+}
+
+/* ─── SPINNER / TOAST ─────────────────────────────────────── */
 .spin {
-  display: inline-block;
-  width: 14px; height: 14px;
-  border: 2px solid rgba(0,0,0,0.2);
-  border-top-color: #000;
-  border-radius: 50%;
-  animation: spin 0.5s linear infinite;
+  display: inline-block; width: 11px; height: 11px;
+  border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff;
+  border-radius: 50%; animation: rot 0.5s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes rot { to { transform: rotate(360deg); } }
 
-/* Toast */
-.toast {
-  position: fixed;
-  bottom: 24px; right: 24px;
-  background: var(--surface2);
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  padding: 12px 18px;
-  font-size: 13px;
-  color: var(--text);
-  z-index: 9999;
-  transform: translateY(80px);
-  opacity: 0;
-  transition: all 0.25s;
-  font-family: 'IBM Plex Mono', monospace;
-  pointer-events: none;
+#toast {
+  position: fixed; bottom: 18px; right: 18px;
+  background: var(--s3); border: 1px solid var(--b2);
+  border-radius: 8px; padding: 9px 14px;
+  font-size: 11px; color: var(--text);
+  z-index: 9999; font-family: var(--mono);
+  transform: translateY(50px); opacity: 0;
+  transition: all 0.2s; pointer-events: none;
 }
-.toast.show { transform: translateY(0); opacity: 1; }
+#toast.on { transform: translateY(0); opacity: 1; }
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <header>
-    <div class="logo-block">
-      <div class="logo-tag">PDF Hunter — Server Mode</div>
-      <h1>GRAB<br>EVERY<br><span>PDF.</span></h1>
-    </div>
-    <div class="header-meta">
-      v2.0 — server mode<br>
-      runs locally<br>
-      no CORS limits<br>
-      any website
-    </div>
-  </header>
+<!-- TOP BAR -->
+<div id="topbar">
+  <span class="logo">PDF/HUNTER</span>
+  <input type="url" id="url-input" placeholder="https://example.com/revision/" autocomplete="off" />
+  <label class="top-opt on" id="opt-path">
+    <input type="checkbox" id="strict-path" checked onchange="syncOpt('opt-path',this)"> 🔒 Path
+  </label>
+  <label class="top-opt on" id="opt-domain">
+    <input type="checkbox" id="same-domain" checked onchange="syncOpt('opt-domain',this)"> Domain
+  </label>
+  <select id="depth-sel">
+    <option value="1">Depth 1</option>
+    <option value="2" selected>Depth 2</option>
+    <option value="3">Depth 3</option>
+    <option value="4">Depth 4</option>
+    <option value="5">Depth 5</option>
+  </select>
+  <input type="text" id="prescan-filter" placeholder="filename filter…" />
+  <button id="scan-btn" onclick="startScan()"><span id="btn-lbl">Scan</span></button>
+  <button id="stop-btn" onclick="stopScan()">Stop</button>
+</div>
 
-  <!-- Scan Panel -->
-  <div class="panel">
-    <div class="panel-header">
-      <div class="dot"></div>
-      Target URL
-    </div>
-    <div class="panel-body">
-      <div class="url-row">
-        <input type="url" id="url-input" placeholder="https://example.com/revision" autocomplete="off" />
-        <button class="btn btn-scan" id="scan-btn" onclick="startScan()">
-          <span id="btn-label">Scan</span>
-        </button>
-        <button class="btn btn-stop" id="stop-btn" onclick="stopScan()" style="display:none">Stop</button>
-      </div>
-      <div class="options-row">
-        <label class="opt-label" title="Only crawl pages under the same URL path — prevents drifting into unrelated site sections">
-          <input type="checkbox" id="strict-path" checked>
-          🔒 Path lock
-        </label>
-        <div class="divider"></div>
-        <label class="opt-label">
-          <input type="checkbox" id="same-domain" checked>
-          Same domain
-        </label>
-        <div class="divider"></div>
-        <label class="opt-label">
-          Depth:
-          <select id="depth">
-            <option value="1">1</option>
-            <option value="2" selected>2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5 (slow)</option>
-          </select>
-        </label>
-        <div class="divider"></div>
-        <label class="opt-label" style="color:var(--dim);font-size:12px">
-          🟢 Server :7734
-        </label>
-      </div>
-      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);margin-bottom:6px;display:flex;gap:16px">
-          <span>Pre-scan filter — only collect matching PDFs</span>
-          <span><span style="color:var(--accent2)">word</span> include &nbsp; <span style="color:var(--red)">-word</span> exclude</span>
-        </div>
-        <input type="text" class="filter-input" id="prescan-filter" placeholder="e.g. notes qp -specimen" />
-      </div>
+<!-- STATUS STRIP -->
+<div id="statusbar">
+  <div class="sbar-dot" id="sbar-dot"></div>
+  <span id="sbar-text">Scanning…</span>
+  <span class="sbar-num"><b id="s-pages">0</b> pages</span>
+  <span class="sbar-num"><b class="hi" id="s-pdfs">0</b> PDFs</span>
+  <div class="prog-track"><div class="prog-bar" id="prog-bar"></div></div>
+  <span id="sbar-peek" style="font-size:10px;color:var(--t3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+</div>
+
+<!-- WELCOME -->
+<div id="welcome">
+  <div class="welcome-inner">
+    <div class="welcome-logo">PDF Hunter</div>
+    <div class="welcome-title">Grab every<br><span>PDF.</span></div>
+    <div class="welcome-sub">Crawl any website and bulk-download all its PDFs — organised by folder, no browser limits.</div>
+    <div class="welcome-hints">
+      <div class="hint-chip"><b>Path lock</b>stays under the starting URL path</div>
+      <div class="hint-chip"><b>Depth 2</b>covers most revision sites</div>
+      <div class="hint-chip"><b>filename filter</b>e.g. <code>qp -specimen</code></div>
     </div>
   </div>
+</div>
 
-  <!-- Status Panel -->
-  <div class="panel" id="status-panel">
-    <div class="panel-header">
-      <div class="dot" id="status-dot"></div>
-      <span id="status-label">Scanning...</span>
-    </div>
-    <div class="panel-body">
-      <div class="stats-row">
-        <div class="stat">
-          <span class="stat-val" id="stat-pages">0</span>
-          <span class="stat-label">Pages Checked</span>
-        </div>
-        <div class="stat">
-          <span class="stat-val green" id="stat-pdfs">0</span>
-          <span class="stat-label">PDFs Found</span>
-        </div>
-        <div class="stat">
-          <span class="stat-val" id="stat-queue">—</span>
-          <span class="stat-label">Status</span>
-        </div>
-      </div>
-      <div class="progress-track">
-        <div class="progress-bar" id="prog-bar"></div>
-      </div>
-      <div class="terminal" id="terminal"></div>
-    </div>
-  </div>
+<!-- MAIN LAYOUT -->
+<div id="layout">
 
-  <!-- Results Panel -->
-  <div class="panel" id="results-panel">
-    <div class="panel-header">
-      <div class="dot" style="background:var(--green)"></div>
-      Results
+  <!-- LEFT: FOLDER TREE -->
+  <aside id="sidebar">
+    <div class="sb-head">
+      <div class="sb-label">Folders</div>
+      <input type="text" id="folder-search" placeholder="Search…" oninput="renderSidebar()" />
     </div>
-    <div class="panel-body">
-      <div class="results-toolbar">
-        <div class="results-count">Found <strong id="res-count">0</strong> PDFs</div>
-        <div class="btn-group">
-          <button class="btn btn-dl-all" onclick="downloadAll()">⬇ Download All</button>
-          <button class="btn btn-dl-sel" id="dl-sel-btn" onclick="downloadSelected()" disabled>⬇ Selected (<span id="sel-count">0</span>)</button>
-          <button class="btn btn-copy" onclick="copyLinks()">📋 Copy Links</button>
-        </div>
-      </div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);margin-bottom:8px;display:flex;gap:16px;flex-wrap:wrap">
-        <span><span style="color:var(--accent2)">word</span> — include</span>
-        <span><span style="color:var(--red)">-word</span> — exclude</span>
-        <span style="color:var(--dim)">e.g. <span style="color:var(--muted)">paper-1 qp -specimen</span></span>
-      </div>
-      <div class="filter-bar">
-        <input type="text" class="filter-input" id="filter-input" placeholder="Filter by name..." oninput="filterList()" />
-        <label class="opt-label" style="white-space:nowrap;padding:0 4px" title="Select all visible (filtered) PDFs">
-          <input type="checkbox" id="select-all-cb" onchange="toggleSelectAll(this.checked)">
-          Select all
-        </label>
-      </div>
-      <div class="pdf-list" id="pdf-list"></div>
+    <div id="folder-list"></div>
+    <div class="sb-foot" id="sb-foot"></div>
+  </aside>
+
+  <!-- RIGHT: FILE PANEL -->
+  <div id="filepanel">
+    <div id="fp-toolbar">
+      <div id="fp-crumb">Select a folder</div>
+      <input type="text" id="file-filter" placeholder="filter files…" oninput="renderFiles()" />
+      <label class="fp-cb-wrap">
+        <input type="checkbox" id="sel-all-cb" onchange="toggleSelAll(this.checked)"> All
+      </label>
+      <button class="abtn g" id="dl-folder-btn" onclick="dlFolder()">⬇ Folder</button>
+      <button class="abtn p" id="dl-sel-btn" onclick="dlSelected()" disabled>⬇ Sel (<span id="sel-ct">0</span>)</button>
+      <button class="abtn" onclick="copyLinks()">Copy links</button>
+      <button class="abtn g" onclick="dlAll()">⬇ All</button>
+    </div>
+    <div id="file-list">
+      <div class="empty-state"><div class="ei">📂</div>Select a folder from the left</div>
     </div>
   </div>
 
 </div>
 
-<div class="toast" id="toast"></div>
+<div id="toast"></div>
 
 <script>
 const API = 'http://localhost:7734';
-let polling = null;
-let lastLogTime = 0;
-let allPDFs = [];
-let scanRunning = false;
+let polling = null, lastLogTime = 0;
+let allPDFs = [], scanRunning = false;
 let selectedURLs = new Set();
-let _filteredPDFs = [];
-let _folderGroups = [];
-const openFolders = new Set(); // tracks which folders are expanded (default: closed)
+let currentFolder = null;
+let _curFiles = [];
+let _sidebarEntries = [];
+
+// ── UTILS ──────────────────────────────────────────────────
 
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2500);
+  el.classList.add('on');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('on'), 2600);
 }
+
+function syncOpt(id, cb) {
+  document.getElementById(id).classList.toggle('on', cb.checked);
+}
+
+function getFolderPath(url) {
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    parts.pop();
+    return parts.length ? '/' + parts.join('/') : '/';
+  } catch { return '/'; }
+}
+
+function groupByFolder(pdfs) {
+  const m = new Map();
+  for (const p of pdfs) {
+    const f = getFolderPath(p.url);
+    if (!m.has(f)) m.set(f, []);
+    m.get(f).push(p);
+  }
+  return m;
+}
+
+function folderParts(path) {
+  if (path === '/') return { main: 'root', sub: '' };
+  const parts = path.split('/').filter(Boolean);
+  return {
+    main: parts[parts.length - 1],
+    sub: parts.length > 1 ? parts.slice(0, -1).join(' / ') : ''
+  };
+}
+
+// ── SIDEBAR ────────────────────────────────────────────────
+
+function renderSidebar() {
+  const q = (document.getElementById('folder-search').value || '').toLowerCase();
+  const groups = groupByFolder(allPDFs);
+
+  _sidebarEntries = [...groups.entries()]
+    .filter(([f]) => !q || f.toLowerCase().includes(q))
+    .sort((a, b) => b[1].length - a[1].length);
+
+  const list = document.getElementById('folder-list');
+
+  if (!_sidebarEntries.length) {
+    list.innerHTML = '<div class="empty-state" style="padding:24px;height:auto">No folders</div>';
+    document.getElementById('sb-foot').innerHTML = '';
+    return;
+  }
+
+  list.innerHTML = _sidebarEntries.map(([folder, pdfs], i) => {
+    const { main, sub } = folderParts(folder);
+    const sel = folder === currentFolder ? 'sel' : '';
+    return `<div class="fitem ${sel}" onclick="selectFolder(${i})">
+      <span class="fitem-icon">📁</span>
+      <div class="fitem-names">
+        <div class="fitem-main">${esc(main)}</div>
+        ${sub ? `<div class="fitem-sub">${esc(sub)}</div>` : ''}
+      </div>
+      <span class="fitem-ct">${pdfs.length}</span>
+    </div>`;
+  }).join('');
+
+  const totalFolders = groups.size;
+  document.getElementById('sb-foot').innerHTML =
+    `<b>${allPDFs.length}</b> PDFs &nbsp;·&nbsp; ${totalFolders} folder${totalFolders !== 1 ? 's' : ''}`;
+}
+
+function selectFolder(idx) {
+  const entry = _sidebarEntries[idx];
+  if (!entry) return;
+  currentFolder = entry[0];
+  renderSidebar();
+  renderFiles();
+}
+
+// ── FILE PANEL ─────────────────────────────────────────────
+
+function getVisibleFiles() {
+  if (!currentFolder) return [];
+  const groups = groupByFolder(allPDFs);
+  const files = groups.get(currentFolder) || [];
+  const q = (document.getElementById('file-filter').value || '').toLowerCase().trim();
+  if (!q) return files;
+  const terms = q.split(/\s+/);
+  const inc = terms.filter(t => !t.startsWith('-') && t);
+  const exc = terms.filter(t => t.startsWith('-') && t.length > 1).map(t => t.slice(1));
+  return files.filter(p => {
+    const n = p.name.toLowerCase();
+    return inc.every(t => n.includes(t)) && !exc.some(t => n.includes(t));
+  });
+}
+
+function renderFiles() {
+  const files = getVisibleFiles();
+  _curFiles = files;
+
+  const crumb = document.getElementById('fp-crumb');
+  const list = document.getElementById('file-list');
+  const selAllCb = document.getElementById('sel-all-cb');
+
+  if (!currentFolder) {
+    crumb.innerHTML = 'Select a folder';
+    list.innerHTML = '<div class="empty-state"><div class="ei">📂</div>Select a folder from the left</div>';
+    return;
+  }
+
+  const { main, sub } = folderParts(currentFolder);
+  crumb.innerHTML = sub ? `<span style="color:var(--t3)">${esc(sub)} / </span><b>${esc(main)}</b>` : `<b>${esc(main)}</b>`;
+
+  if (!files.length) {
+    list.innerHTML = '<div class="empty-state"><div class="ei">🔍</div>No files match filter</div>';
+    selAllCb.checked = false; selAllCb.indeterminate = false;
+    return;
+  }
+
+  const allSel = files.every(p => selectedURLs.has(p.url));
+  const someSel = files.some(p => selectedURLs.has(p.url));
+  selAllCb.checked = allSel;
+  selAllCb.indeterminate = someSel && !allSel;
+
+  list.innerHTML = files.map((pdf, i) => {
+    const name = esc(pdf.raw_name);
+    const checked = selectedURLs.has(pdf.url) ? 'checked' : '';
+    return `<div class="frow">
+      <input type="checkbox" ${checked} onchange="onFileCheck(${i},this.checked)">
+      <span class="frow-icon">📄</span>
+      <span class="frow-name" title="${name}">${name}</span>
+      <div class="frow-btns">
+        <a class="xbtn" href="${pdf.url}" target="_blank" rel="noopener">Open</a>
+        <button class="xbtn dl" onclick="triggerZip([_curFiles[${i}]],_curFiles[${i}].name.replace(/\\.pdf$/i,'')+'.zip')">⬇</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function onFileCheck(i, checked) {
+  const pdf = _curFiles[i];
+  if (!pdf) return;
+  checked ? selectedURLs.add(pdf.url) : selectedURLs.delete(pdf.url);
+  updateSelCount();
+  const files = getVisibleFiles();
+  const cb = document.getElementById('sel-all-cb');
+  const allSel = files.every(p => selectedURLs.has(p.url));
+  const someSel = files.some(p => selectedURLs.has(p.url));
+  cb.checked = allSel; cb.indeterminate = someSel && !allSel;
+}
+
+function toggleSelAll(checked) {
+  getVisibleFiles().forEach(p => checked ? selectedURLs.add(p.url) : selectedURLs.delete(p.url));
+  updateSelCount(); renderFiles();
+}
+
+function updateSelCount() {
+  const n = selectedURLs.size;
+  document.getElementById('sel-ct').textContent = n;
+  document.getElementById('dl-sel-btn').disabled = n === 0;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── DOWNLOADS ──────────────────────────────────────────────
+
+function triggerZip(pdfs, filename) {
+  if (!pdfs.length) return;
+  const a = document.createElement('a');
+  a.href = `${API}/zip?urls=${encodeURIComponent(pdfs.map(p=>p.url).join('|'))}&names=${encodeURIComponent(pdfs.map(p=>p.name).join('|'))}`;
+  a.download = filename; a.style.display = 'none';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function dlFolder() {
+  if (!currentFolder) return;
+  const pdfs = groupByFolder(allPDFs).get(currentFolder) || [];
+  if (!pdfs.length) return;
+  toast(`Zipping ${pdfs.length} PDFs…`);
+  triggerZip(pdfs, folderParts(currentFolder).main + '.zip');
+}
+
+function dlSelected() {
+  const sel = allPDFs.filter(p => selectedURLs.has(p.url));
+  if (!sel.length) return;
+  toast(`Zipping ${sel.length} PDFs…`);
+  triggerZip(sel, 'selected.zip');
+}
+
+function dlAll() {
+  if (!allPDFs.length) return;
+  toast(`Zipping ${allPDFs.length} PDFs…`);
+  triggerZip(allPDFs, 'all_pdfs.zip');
+}
+
+function copyLinks() {
+  navigator.clipboard.writeText(allPDFs.map(p=>p.url).join('\n'))
+    .then(() => toast(`Copied ${allPDFs.length} links ✓`));
+}
+
+// ── SCAN ───────────────────────────────────────────────────
 
 async function startScan() {
   const url = document.getElementById('url-input').value.trim();
   if (!url) { toast('Enter a URL first'); return; }
 
-  const depth = parseInt(document.getElementById('depth').value);
-  const same_domain = document.getElementById('same-domain').checked;
-  const strict_path = document.getElementById('strict-path').checked;
-  const name_filter = document.getElementById('prescan-filter').value.trim();
-
-  // Reset UI
-  allPDFs = [];
-  selectedURLs = new Set();
-  openFolders.clear();
+  allPDFs = []; selectedURLs = new Set(); currentFolder = null; lastLogTime = 0;
   updateSelCount();
-  lastLogTime = 0;
-  document.getElementById('terminal').innerHTML = '';
-  document.getElementById('pdf-list').innerHTML = '';
-  document.getElementById('res-count').textContent = '0';
-  document.getElementById('stat-pages').textContent = '0';
-  document.getElementById('stat-pdfs').textContent = '0';
-  document.getElementById('stat-queue').textContent = 'Running';
-  document.getElementById('status-panel').style.display = 'block';
-  document.getElementById('results-panel').style.display = 'none';
-  document.getElementById('prog-bar').classList.remove('done');
-  document.getElementById('prog-bar').style.width = '5%';
-  document.getElementById('status-label').textContent = 'Scanning...';
-  document.getElementById('status-dot').style.animation = 'pulse 1s infinite';
+
   document.getElementById('scan-btn').disabled = true;
-  document.getElementById('scan-btn').querySelector('#btn-label').innerHTML = '<span class="spin"></span>';
-  document.getElementById('stop-btn').style.display = 'inline-flex';
+  document.getElementById('btn-lbl').innerHTML = '<span class="spin"></span>';
+  document.getElementById('stop-btn').style.display = 'block';
+  document.getElementById('statusbar').classList.add('on');
+  document.getElementById('sbar-dot').className = 'sbar-dot scanning';
+  document.getElementById('sbar-text').textContent = 'Scanning…';
+  document.getElementById('s-pages').textContent = '0';
+  document.getElementById('s-pdfs').textContent = '0';
+  document.getElementById('prog-bar').className = 'prog-bar';
+  document.getElementById('prog-bar').style.width = '3%';
+  document.getElementById('welcome').classList.add('hidden');
+  document.getElementById('layout').classList.add('on');
+  document.getElementById('folder-list').innerHTML = '';
+  document.getElementById('file-list').innerHTML = '<div class="empty-state"><div class="ei">⏳</div>Scanning…</div>';
+  document.getElementById('sb-foot').innerHTML = '';
 
   try {
     const r = await fetch(`${API}/scan`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, depth, same_domain, strict_path, name_filter })
+      body: JSON.stringify({
+        url,
+        depth: parseInt(document.getElementById('depth-sel').value),
+        same_domain: document.getElementById('same-domain').checked,
+        strict_path: document.getElementById('strict-path').checked,
+        name_filter: document.getElementById('prescan-filter').value.trim()
+      })
     });
-    if (!r.ok) {
-      const err = await r.json();
-      toast('Error: ' + err.error);
-      resetBtn();
-      return;
-    }
+    if (!r.ok) { const e = await r.json(); toast('Error: ' + e.error); resetScanBtn(); return; }
     scanRunning = true;
-    polling = setInterval(pollStatus, 600);
-  } catch(e) {
-    toast('Cannot reach server. Is server.py running?');
-    resetBtn();
+    polling = setInterval(pollStatus, 700);
+  } catch {
+    toast('Cannot reach server — is server.py running?');
+    resetScanBtn();
   }
 }
 
-async function stopScan() {
-  await fetch(`${API}/stop`).catch(() => {});
-}
+async function stopScan() { await fetch(`${API}/stop`).catch(()=>{}); }
 
-function resetBtn() {
+function resetScanBtn() {
   document.getElementById('scan-btn').disabled = false;
-  document.getElementById('btn-label').textContent = 'Scan';
+  document.getElementById('btn-lbl').textContent = 'Scan';
   document.getElementById('stop-btn').style.display = 'none';
   scanRunning = false;
 }
@@ -739,241 +763,43 @@ async function pollStatus() {
     const r = await fetch(`${API}/status?since=${lastLogTime}`);
     const data = await r.json();
 
-    // Update stats
-    document.getElementById('stat-pages').textContent = data.pages_checked;
-    document.getElementById('stat-pdfs').textContent = data.pdf_count;
+    document.getElementById('s-pages').textContent = data.pages_checked;
+    document.getElementById('s-pdfs').textContent = data.pdf_count;
 
-    // Update progress bar (rough estimate)
     if (!data.done) {
-      const pct = Math.min(5 + data.pages_checked * 1.5, 88);
-      document.getElementById('prog-bar').style.width = pct + '%';
+      document.getElementById('prog-bar').style.width = Math.min(5 + data.pages_checked * 1.5, 88) + '%';
     }
 
-    // Append new logs
-    const term = document.getElementById('terminal');
-    for (const log of data.logs) {
-      if (log.t > lastLogTime) {
-        lastLogTime = Math.max(lastLogTime, log.t);
-        const line = document.createElement('div');
-        line.className = 'log-line ' + log.level;
-        line.textContent = '> ' + log.msg;
-        term.appendChild(line);
-      }
+    if (data.logs.length) {
+      lastLogTime = Math.max(lastLogTime, ...data.logs.map(l => l.t));
+      document.getElementById('sbar-peek').textContent = data.logs[data.logs.length - 1].msg;
     }
-    term.scrollTop = term.scrollHeight;
 
-    // Update PDF list
     if (data.pdfs.length !== allPDFs.length) {
       allPDFs = data.pdfs;
-      renderPDFs(allPDFs);
-      if (allPDFs.length > 0) {
-        document.getElementById('results-panel').style.display = 'block';
-        document.getElementById('res-count').textContent = allPDFs.length;
-        document.getElementById('filter-input').value = '';
+      renderSidebar();
+      if (!currentFolder && allPDFs.length) {
+        const first = [...groupByFolder(allPDFs).keys()][0];
+        currentFolder = first;
+        renderSidebar();
+        renderFiles();
+      } else {
+        renderFiles();
       }
     }
 
     if (data.done) {
-      clearInterval(polling);
-      polling = null;
-      resetBtn();
-      document.getElementById('prog-bar').classList.add('done');
-      document.getElementById('stat-queue').textContent = 'Done ✓';
-      document.getElementById('status-label').textContent = `Complete — ${data.pdf_count} PDFs found`;
-      document.getElementById('status-dot').style.animation = 'none';
-      document.getElementById('status-dot').style.background = 'var(--green)';
+      clearInterval(polling); polling = null;
+      resetScanBtn();
+      document.getElementById('prog-bar').className = 'prog-bar done';
+      document.getElementById('sbar-dot').className = 'sbar-dot done';
+      document.getElementById('sbar-text').textContent =
+        `Done — ${data.pdf_count} PDFs across ${groupByFolder(allPDFs).size} folders`;
+      document.getElementById('sbar-peek').textContent = '';
+      allPDFs = data.pdfs;
+      renderSidebar(); renderFiles();
     }
-  } catch(e) {
-    // Server might be busy, try again next poll
-  }
-}
-
-function updateSelCount() {
-  const n = selectedURLs.size;
-  document.getElementById('sel-count').textContent = n;
-  document.getElementById('dl-sel-btn').disabled = n === 0;
-}
-
-function toggleSelectAll(checked) {
-  applyFilter(allPDFs).forEach(p => checked ? selectedURLs.add(p.url) : selectedURLs.delete(p.url));
-  updateSelCount();
-  renderPDFs(allPDFs);
-}
-
-function onRowCheck(idx, checked) {
-  const pdf = _filteredPDFs[idx];
-  if (!pdf) return;
-  checked ? selectedURLs.add(pdf.url) : selectedURLs.delete(pdf.url);
-  updateSelCount();
-  // refresh folder checkboxes without full re-render
-  _folderGroups.forEach((group, fi) => {
-    const cb = document.querySelectorAll('.folder-header input[type="checkbox"]')[fi];
-    if (!cb) return;
-    const all = group.pdfs.every(p => selectedURLs.has(p.url));
-    const some = group.pdfs.some(p => selectedURLs.has(p.url));
-    cb.checked = all;
-    cb.indeterminate = some && !all;
-  });
-  const filtered = applyFilter(allPDFs);
-  document.getElementById('select-all-cb').checked = filtered.length > 0 && filtered.every(p => selectedURLs.has(p.url));
-}
-
-function applyFilter(pdfs) {
-  const raw = document.getElementById('filter-input').value.toLowerCase().trim();
-  if (!raw) return pdfs;
-  const terms = raw.split(/\s+/);
-  const include = terms.filter(t => !t.startsWith('-') && t.length > 0);
-  const exclude = terms.filter(t => t.startsWith('-') && t.length > 1).map(t => t.slice(1));
-  return pdfs.filter(p => {
-    const name = p.name.toLowerCase();
-    return include.every(t => name.includes(t)) && !exclude.some(t => name.includes(t));
-  });
-}
-
-function getFolderPath(url) {
-  try {
-    const parts = new URL(url).pathname.split('/').filter(Boolean);
-    parts.pop();
-    return parts.length > 0 ? '/' + parts.join('/') : '/';
-  } catch { return '/'; }
-}
-
-function renderPDFs(pdfs) {
-  const filtered = applyFilter(pdfs);
-  _filteredPDFs = filtered;
-
-  const selectAllCb = document.getElementById('select-all-cb');
-  selectAllCb.checked = filtered.length > 0 && filtered.every(p => selectedURLs.has(p.url));
-
-  const list = document.getElementById('pdf-list');
-  if (filtered.length === 0) {
-    list.innerHTML = '<div class="empty">No PDFs match your filter.</div>';
-    _folderGroups = [];
-    return;
-  }
-
-  // Group by folder
-  const groupMap = new Map();
-  filtered.forEach((pdf, i) => {
-    const folder = getFolderPath(pdf.url);
-    if (!groupMap.has(folder)) groupMap.set(folder, { folder, pdfs: [], indices: [] });
-    const g = groupMap.get(folder);
-    g.pdfs.push(pdf);
-    g.indices.push(i);
-  });
-  _folderGroups = [...groupMap.values()];
-
-  // Auto-expand all if small result set, otherwise keep current open state
-  if (_folderGroups.length <= 3) {
-    _folderGroups.forEach(g => openFolders.add(g.folder));
-  }
-
-  let html = '';
-  _folderGroups.forEach((group, fi) => {
-    const isOpen = openFolders.has(group.folder);
-    const allSel = group.pdfs.every(p => selectedURLs.has(p.url));
-    const someSel = group.pdfs.some(p => selectedURLs.has(p.url));
-    const parts = group.folder === '/' ? ['root'] : group.folder.split('/').filter(Boolean);
-    const folderLabel = parts.length > 1
-      ? `<span style="color:var(--dim)">${parts[parts.length-2]} / </span><strong>${parts[parts.length-1]}</strong>`
-      : `<strong>${parts[0]}</strong>`;
-
-    html += `<div class="folder-section">
-      <div class="folder-header" onclick="toggleFolder(${fi})">
-        <input type="checkbox" ${allSel ? 'checked' : ''} onclick="event.stopPropagation()"
-          onchange="toggleFolderSelect(${fi}, this.checked)" style="flex-shrink:0">
-        <span class="folder-toggle ${isOpen ? 'open' : ''}">▶</span>
-        <span style="font-size:13px;flex-shrink:0">📁</span>
-        <span class="folder-label">${folderLabel}</span>
-        <span class="folder-count">${group.pdfs.length}</span>
-        <button class="folder-dl" onclick="event.stopPropagation(); downloadFolder(${fi})">⬇ zip</button>
-      </div>
-      <div class="folder-body ${isOpen ? 'open' : ''}">`;
-
-    group.pdfs.forEach((pdf, j) => {
-      const i = group.indices[j];
-      const safeName = pdf.raw_name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-      const checked = selectedURLs.has(pdf.url) ? 'checked' : '';
-      html += `<div class="pdf-row" style="padding-left:28px">
-        <input type="checkbox" ${checked} onchange="onRowCheck(${i}, this.checked)" style="flex-shrink:0">
-        <div class="pdf-icon">📄</div>
-        <div class="pdf-info">
-          <div class="pdf-name" title="${safeName}">${safeName}</div>
-        </div>
-        <div class="pdf-btns">
-          <a class="btn-sm" href="${pdf.url}" target="_blank" rel="noopener">Open</a>
-          <button class="btn-sm dl" onclick="triggerZip([_filteredPDFs[${i}]], _filteredPDFs[${i}].name.replace(/\\.pdf$/i,'') + '.zip')">⬇</button>
-        </div>
-      </div>`;
-    });
-
-    html += `</div></div>`;
-  });
-
-  list.innerHTML = html;
-
-  // Set indeterminate state on folder checkboxes
-  _folderGroups.forEach((group, fi) => {
-    const allSel = group.pdfs.every(p => selectedURLs.has(p.url));
-    const someSel = group.pdfs.some(p => selectedURLs.has(p.url));
-    const cb = list.querySelectorAll('.folder-header input[type="checkbox"]')[fi];
-    if (cb) cb.indeterminate = someSel && !allSel;
-  });
-}
-
-function filterList() {
-  renderPDFs(allPDFs);
-}
-
-function toggleFolder(fi) {
-  const folder = _folderGroups[fi].folder;
-  openFolders.has(folder) ? openFolders.delete(folder) : openFolders.add(folder);
-  renderPDFs(allPDFs);
-}
-
-function toggleFolderSelect(fi, checked) {
-  _folderGroups[fi].pdfs.forEach(p => checked ? selectedURLs.add(p.url) : selectedURLs.delete(p.url));
-  updateSelCount();
-  renderPDFs(allPDFs);
-}
-
-function downloadFolder(fi) {
-  const group = _folderGroups[fi];
-  const folderName = group.folder === '/' ? 'root' : group.folder.split('/').filter(Boolean).pop();
-  toast(`Zipping ${group.pdfs.length} PDFs…`);
-  triggerZip(group.pdfs, folderName + '.zip');
-}
-
-function triggerZip(pdfs, filename) {
-  const urls = pdfs.map(p => p.url).join('|');
-  const names = pdfs.map(p => p.name).join('|');
-  const a = document.createElement('a');
-  a.href = `${API}/zip?urls=${encodeURIComponent(urls)}&names=${encodeURIComponent(names)}`;
-  a.download = filename;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
-
-async function downloadSelected() {
-  const sel = allPDFs.filter(p => selectedURLs.has(p.url));
-  if (!sel.length) return;
-  toast(`Zipping ${sel.length} PDFs… this may take a moment`);
-  triggerZip(sel, 'selected_pdfs.zip');
-}
-
-async function downloadAll() {
-  if (!allPDFs.length) return;
-  toast(`Zipping ${allPDFs.length} PDFs… this may take a moment`);
-  triggerZip(allPDFs, 'all_pdfs.zip');
-}
-
-function copyLinks() {
-  const text = allPDFs.map(p => p.url).join('\n');
-  navigator.clipboard.writeText(text).then(() => {
-    toast(`Copied ${allPDFs.length} links ✓`);
-  });
+  } catch {}
 }
 </script>
 </body>
