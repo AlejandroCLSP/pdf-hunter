@@ -128,37 +128,38 @@ def get_path_parts(url):
 
 def resolve_display_names(pdfs):
     """
-    For any PDFs that share the same raw filename, prefix with enough parent
-    folder segments to make them unique. Modifies pdfs list in place.
-    
+    Always prefix each PDF with its immediate parent folder for context, then
+    chain in more ancestors until all names are unique.
+
     Example:
-      .../Notes/Advanced/1.1.1. Structure.pdf  -> "Advanced — 1.1.1. Structure.pdf"
-      .../Topic-Qs/Advanced/1.1.1. Structure.pdf -> "Advanced — 1.1.1. Structure.pdf"
+      .../Notes/Advanced/1.1.1. Structure.pdf     -> "Advanced — 1.1.1. Structure.pdf"
+      .../Topic-Qs/Advanced/1.1.1. Structure.pdf  -> "Advanced — 1.1.1. Structure.pdf"
       (still clashes) -> "Notes — Advanced — 1.1.1. Structure.pdf"
                       -> "Topic-Qs — Advanced — 1.1.1. Structure.pdf"
     """
-    # Start with just filenames
-    for pdf in pdfs:
-        pdf['name'] = pdf['raw_name']
+    from collections import Counter
 
-    # Keep adding parent segments until all names are unique
-    for depth in range(1, 10):
-        # Find which names are still duplicated
-        from collections import Counter
+    def make_name(pdf, n_parents):
+        parts = get_path_parts(pdf['url'])
+        # parts[-1] is filename; use up to n_parents ancestors before it
+        if len(parts) > n_parents:
+            ancestors = parts[-(n_parents + 1):-1]
+            return ' — '.join(ancestors) + ' — ' + pdf['raw_name']
+        return pdf['raw_name']
+
+    # Always start with 1 parent for context
+    for pdf in pdfs:
+        pdf['name'] = make_name(pdf, 1)
+
+    # Expand ancestors until all names are unique
+    for n_parents in range(2, 10):
         name_counts = Counter(p['name'] for p in pdfs)
         dupes = {name for name, count in name_counts.items() if count > 1}
         if not dupes:
             break
-
         for pdf in pdfs:
             if pdf['name'] in dupes:
-                parts = get_path_parts(pdf['url'])
-                # parts[-1] is filename, parts[-2] is immediate parent, etc.
-                filename = parts[-1] if parts else pdf['raw_name']
-                if len(parts) > depth:
-                    parent = parts[-(depth + 1)]
-                    pdf['name'] = f"{parent} — {filename}"
-                # If we've run out of path segments, just keep what we have
+                pdf['name'] = make_name(pdf, n_parents)
 
 
 def do_scan(start_url, max_depth, same_domain, strict_path):
