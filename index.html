@@ -4,803 +4,1733 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PDF Hunter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:       #08090e;
-  --s1:       #0f1117;
-  --s2:       #16181f;
-  --s3:       #1e2029;
-  --b1:       #1f2130;
-  --b2:       #2a2d3e;
-  --accent:   #6c63ff;
-  --a-dim:    rgba(108,99,255,0.12);
-  --a-mid:    rgba(108,99,255,0.35);
-  --green:    #30d98a;
-  --red:      #ff5f6d;
-  --amber:    #f5a623;
-  --text:     #eeeef5;
-  --t2:       #8b8da8;
-  --t3:       #4a4c65;
-  --mono:     'IBM Plex Mono', monospace;
-  --sans:     'Inter', sans-serif;
-  --radius:   8px;
+  --bg:    #0c0c15;
+  --s1:    #111120;
+  --s2:    #191928;
+  --b1:    #22223a;
+  --b2:    #2e2e50;
+  --acc:   #7c6af7;
+  --acc2:  #9d8fff;
+  --acc-d: rgba(124,106,247,0.12);
+  --grn:   #22d3a3;
+  --red:   #ff5e7a;
+  --amb:   #fbbf24;
+  --tx1:   #f0f0fa;
+  --tx2:   #9090b0;
+  --tx3:   #50507a;
+  --sans:  'Inter', system-ui, sans-serif;
+  --mono:  'IBM Plex Mono', 'Fira Code', monospace;
 }
 
-html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; }
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--tx1);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
+}
 
-/* ─── TOP BAR ─────────────────────────────────────────────── */
-#topbar {
-  height: 54px;
+/* ─── Focus styles ─── */
+:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--acc); }
+
+/* ══════════════════════════════════════════
+   WELCOME SCREEN
+══════════════════════════════════════════ */
+#welcome {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  background-image: radial-gradient(circle, var(--b1) 1px, transparent 1px);
+  background-size: 30px 30px;
+  z-index: 100;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  overflow-y: auto;
+  padding: 40px 20px 80px;
+}
+#welcome.hidden {
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+}
+
+.welcome-glow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  height: 380px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(124,106,247,0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.welcome-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  max-width: 660px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--acc-d);
+  border: 1px solid var(--b2);
+  border-radius: 100px;
+  padding: 4px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--acc2);
+  letter-spacing: 0.08em;
+  margin-bottom: 28px;
+}
+.badge-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--acc);
+}
+
+.welcome-heading {
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: -2px;
+  color: var(--tx1);
+  text-align: center;
+  line-height: 1.1;
+  margin-bottom: 16px;
+}
+.welcome-heading span { color: var(--acc2); }
+
+.welcome-sub {
+  font-size: 16px;
+  color: var(--tx2);
+  text-align: center;
+  max-width: 460px;
+  line-height: 1.65;
+  margin-bottom: 40px;
+}
+
+/* Hero search bar */
+.hero-bar {
+  width: 100%;
+  background: var(--s1);
+  border: 1.5px solid var(--b2);
+  border-radius: 14px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 20px;
+}
+.hero-bar:focus-within {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px rgba(124,106,247,0.15), 0 8px 32px rgba(0,0,0,0.4);
+}
+.hero-bar-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tx3);
+  margin-left: 4px;
+}
+.hero-url-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--tx1);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 8px 4px;
+  min-width: 0;
+}
+.hero-url-input::placeholder { color: var(--tx3); }
+.hero-scan-btn {
+  flex-shrink: 0;
+  background: var(--acc);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  padding: 0 24px;
+  height: 44px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+.hero-scan-btn:hover { background: var(--acc2); }
+.hero-scan-btn:active { transform: scale(0.97); }
+
+/* Options row */
+.options-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 0 4px;
+  margin-bottom: 24px;
+}
+
+/* CSS Toggle switch */
+.toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.toggle-wrap input[type="checkbox"] {
+  /* reset to default so we can use next rules */
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0; height: 0;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.toggle-track {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--b2);
+  position: relative;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.toggle-wrap input:checked ~ .toggle-track {
+  background: var(--acc);
+}
+.toggle-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.toggle-wrap input:checked ~ .toggle-track .toggle-thumb {
+  transform: translateX(16px);
+}
+.toggle-label {
+  font-size: 13px;
+  color: var(--tx2);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Depth select */
+.depth-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.depth-wrap label { font-size: 13px; color: var(--tx2); font-weight: 500; cursor: default; }
+.depth-select {
+  background: var(--s2);
+  border: 1px solid var(--b1);
+  border-radius: 6px;
+  color: var(--tx1);
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 5px 28px 5px 10px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239090b0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: border-color 0.2s ease;
+  outline: none;
+}
+.depth-select:focus { border-color: var(--acc); }
+
+/* Filter input */
+.filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 140px;
+}
+.filter-wrap label { font-size: 13px; color: var(--tx2); font-weight: 500; white-space: nowrap; cursor: default; }
+.filter-input-hero {
+  flex: 1;
+  background: var(--s2);
+  border: 1px solid var(--b1);
+  border-radius: 6px;
+  color: var(--tx1);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 5px 10px;
+  transition: border-color 0.2s ease;
+  outline: none;
+}
+.filter-input-hero::placeholder { color: var(--tx3); }
+.filter-input-hero:focus { border-color: var(--acc); }
+
+/* Recent URLs */
+.recent-section {
+  width: 100%;
+  padding: 0 4px;
+}
+.recent-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tx3);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  margin-bottom: 10px;
+}
+.recent-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.recent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--s2);
+  border: 1px solid var(--b1);
+  border-radius: 6px;
+  padding: 5px 8px 5px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--tx2);
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+  max-width: 300px;
+}
+.recent-chip:hover { border-color: var(--acc); color: var(--tx1); background: var(--acc-d); }
+.recent-chip-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-chip-x {
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--tx3);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.recent-chip-x:hover { color: var(--red); background: rgba(255,94,122,0.12); }
+
+.welcome-hint {
+  position: fixed;
+  bottom: 24px;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--tx3);
+  font-family: var(--mono);
+  pointer-events: none;
+  z-index: 101;
+}
+
+/* ══════════════════════════════════════════
+   APP SHELL
+══════════════════════════════════════════ */
+#app {
+  display: none;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+#app.visible { display: flex; }
+
+/* ─── Sticky Header ─── */
+header {
+  height: 48px;
+  background: var(--s1);
+  border-bottom: 1px solid var(--b1);
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 16px;
-  background: var(--s1);
-  border-bottom: 1px solid var(--b1);
+  padding: 0 14px;
   flex-shrink: 0;
-  z-index: 20;
+  z-index: 10;
 }
 
-.logo {
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+  flex-shrink: 0;
+  border-radius: 6px;
+  padding: 2px 4px;
+  transition: opacity 0.2s ease;
+}
+.header-logo:hover { opacity: 0.8; }
+.header-logo-mark {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  background: var(--acc);
+  display: flex; align-items: center; justify-content: center;
   font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+.header-logo-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tx1);
+  letter-spacing: -0.3px;
+  font-family: var(--mono);
+}
+
+.header-url-input {
+  flex: 1;
+  background: var(--s2);
+  border: 1px solid var(--b1);
+  border-radius: 7px;
+  color: var(--tx1);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 5px 10px;
+  min-width: 0;
+  transition: border-color 0.2s ease;
+  outline: none;
+}
+.header-url-input:focus { border-color: var(--acc); }
+.header-url-input::placeholder { color: var(--tx3); }
+
+.header-stop-btn {
+  flex-shrink: 0;
+  background: rgba(255,94,122,0.1);
+  border: 1px solid rgba(255,94,122,0.3);
+  border-radius: 6px;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 12px;
+  height: 30px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  display: flex; align-items: center; gap: 5px;
+}
+.header-stop-btn:hover { background: rgba(255,94,122,0.2); border-color: var(--red); }
+.header-stop-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+
+.header-new-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--b2);
+  border-radius: 6px;
+  color: var(--tx2);
   font-size: 12px;
   font-weight: 500;
-  color: var(--accent);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  flex-shrink: 0;
-  padding-right: 10px;
-  border-right: 1px solid var(--b2);
-  margin-right: 4px;
-}
-
-#url-input {
-  flex: 1;
-  height: 34px;
-  background: var(--bg);
-  border: 1px solid var(--b2);
-  border-radius: var(--radius);
   padding: 0 12px;
-  color: var(--text);
-  font-family: var(--mono);
-  font-size: 12px;
-  outline: none;
-  min-width: 0;
-  transition: border-color 0.15s;
+  height: 30px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
 }
-#url-input:focus { border-color: var(--accent); }
-#url-input::placeholder { color: var(--t3); }
+.header-new-btn:hover { border-color: var(--acc); color: var(--acc2); }
 
-.top-opt {
-  display: flex; align-items: center; gap: 5px;
-  height: 30px; padding: 0 10px;
-  border: 1px solid var(--b1);
-  border-radius: 6px;
-  font-size: 11px; color: var(--t2);
-  cursor: pointer; user-select: none;
-  transition: all 0.12s; white-space: nowrap; flex-shrink: 0;
-  background: transparent;
-}
-.top-opt input { display: none; }
-.top-opt.on { border-color: var(--a-mid); color: var(--accent); background: var(--a-dim); }
-
-#depth-sel {
-  height: 30px; padding: 0 8px;
-  background: var(--bg); border: 1px solid var(--b1);
-  border-radius: 6px; color: var(--t2);
-  font-size: 11px; font-family: var(--mono);
-  outline: none; cursor: pointer; flex-shrink: 0;
-}
-
-#prescan-filter {
-  height: 30px; padding: 0 10px; width: 150px;
-  background: var(--bg); border: 1px solid var(--b1);
-  border-radius: 6px; color: var(--text);
-  font-size: 11px; font-family: var(--mono);
-  outline: none; flex-shrink: 0;
-}
-#prescan-filter:focus { border-color: var(--b2); }
-#prescan-filter::placeholder { color: var(--t3); }
-
-#scan-btn {
-  height: 34px; padding: 0 18px;
-  background: var(--accent); color: #fff;
-  border: none; border-radius: var(--radius);
-  font-family: var(--sans); font-size: 13px; font-weight: 600;
-  cursor: pointer; flex-shrink: 0;
-  display: flex; align-items: center; gap: 7px;
-  transition: opacity 0.15s, transform 0.1s;
-}
-#scan-btn:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
-#scan-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
-
-#stop-btn {
-  height: 34px; padding: 0 14px;
-  background: transparent; border: 1px solid var(--red); color: var(--red);
-  border-radius: var(--radius); font-size: 12px;
-  cursor: pointer; flex-shrink: 0; display: none;
-}
-#stop-btn:hover { background: rgba(255,95,109,0.1); }
-
-/* ─── STATUS STRIP ─────────────────────────────────────────── */
-#statusbar {
-  display: none;
+/* ─── Progress Strip ─── */
+#progress-strip {
   height: 36px;
+  background: var(--s2);
+  border-bottom: 1px solid var(--b1);
+  display: flex;
   align-items: center;
   gap: 14px;
   padding: 0 16px;
-  background: var(--s1);
-  border-bottom: 1px solid var(--b1);
   flex-shrink: 0;
-  font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
 }
-#statusbar.on { display: flex; }
 
-.sbar-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--amber); flex-shrink: 0;
+.pulse-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--grn);
+  flex-shrink: 0;
+  animation: pulseDot 1.4s ease-in-out infinite;
 }
-.sbar-dot.scanning { animation: pulse 1s ease-in-out infinite; }
-.sbar-dot.done { background: var(--green); }
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+.pulse-dot.idle { background: var(--tx3); animation: none; }
+.pulse-dot.done { background: var(--grn); animation: none; }
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.7); }
+}
 
-#sbar-text { color: var(--t2); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sbar-num { color: var(--t3); }
-.sbar-num b { color: var(--text); }
-.sbar-num b.hi { color: var(--green); }
+#status-text {
+  color: var(--tx2);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stat-item {
+  display: flex; align-items: center; gap: 4px;
+  color: var(--tx2); white-space: nowrap; flex-shrink: 0;
+}
+.stat-item .val { color: var(--tx1); font-weight: 600; }
+.stat-item .val.green { color: var(--grn); }
 
-.prog-track { width: 100px; height: 2px; background: var(--b2); border-radius: 1px; overflow: hidden; flex-shrink: 0; }
-.prog-bar { height: 100%; background: var(--accent); border-radius: 1px; width: 0%; transition: width 0.4s; }
-.prog-bar.done { background: var(--green); width: 100% !important; }
+.progress-bar-wrap {
+  width: 120px; height: 4px;
+  background: var(--b1);
+  border-radius: 2px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--acc);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+  width: 0%;
+}
+.progress-bar-fill.indeterminate {
+  animation: indeterminate 1.6s ease-in-out infinite;
+  width: 55%;
+}
+@keyframes indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(220%); }
+}
 
-/* ─── LAYOUT ──────────────────────────────────────────────── */
-#layout {
-  display: none;
+/* ─── Two-panel layout ─── */
+#panels {
+  display: flex;
   flex: 1;
   overflow: hidden;
 }
-#layout.on { display: flex; }
 
-/* ─── SIDEBAR ─────────────────────────────────────────────── */
-#sidebar {
-  width: 250px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
+/* ══════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════ */
+aside {
+  width: 240px;
+  min-width: 240px;
   background: var(--s1);
   border-right: 1px solid var(--b1);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
-.sb-head {
-  padding: 12px 14px 10px;
+.sidebar-header {
+  padding: 12px 12px 10px;
   border-bottom: 1px solid var(--b1);
   flex-shrink: 0;
 }
-.sb-label {
-  font-size: 10px; font-family: var(--mono);
-  color: var(--t3); letter-spacing: 1.5px;
-  text-transform: uppercase; margin-bottom: 8px;
+.sidebar-title-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 10px;
 }
-#folder-search {
-  width: 100%; height: 28px; padding: 0 10px;
-  background: var(--bg); border: 1px solid var(--b1);
-  border-radius: 6px; color: var(--text);
-  font-size: 11px; font-family: var(--mono); outline: none;
+.sidebar-title {
+  font-size: 11px; font-weight: 700;
+  color: var(--tx3);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  flex: 1;
 }
-#folder-search:focus { border-color: var(--b2); }
-#folder-search::placeholder { color: var(--t3); }
-
-#folder-list { flex: 1; overflow-y: auto; padding: 4px 0; }
-#folder-list::-webkit-scrollbar { width: 3px; }
-#folder-list::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 2px; }
-
-.fitem {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 14px; cursor: pointer;
-  transition: background 0.1s;
-  border-left: 2px solid transparent;
-  user-select: none;
+.folder-count-badge {
+  background: var(--b1); border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 11px; color: var(--tx2); font-weight: 600;
 }
-.fitem:hover { background: var(--s2); }
-.fitem.sel { background: var(--a-dim); border-left-color: var(--accent); }
-
-.fitem-icon { font-size: 12px; flex-shrink: 0; opacity: 0.6; }
-.fitem-names { flex: 1; min-width: 0; }
-.fitem-main { font-size: 12px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fitem-sub { font-size: 10px; color: var(--t3); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
-.fitem-ct { font-family: var(--mono); font-size: 10px; color: var(--t3); flex-shrink: 0; }
-.fitem.sel .fitem-ct { color: var(--accent); }
-
-.sb-foot {
-  padding: 10px 14px;
-  border-top: 1px solid var(--b1);
-  flex-shrink: 0;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--t3);
+.sidebar-search {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--b1);
+  border-radius: 6px;
+  color: var(--tx1);
+  font-size: 12px;
+  padding: 5px 10px;
+  transition: border-color 0.2s ease;
+  outline: none;
 }
-.sb-foot b { color: var(--green); font-size: 14px; }
+.sidebar-search:focus { border-color: var(--acc); }
+.sidebar-search::placeholder { color: var(--tx3); }
 
-/* ─── FILE PANEL ──────────────────────────────────────────── */
-#filepanel {
-  flex: 1; display: flex; flex-direction: column;
-  overflow: hidden; background: var(--bg);
+.folder-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
 }
 
-#fp-toolbar {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 14px;
-  background: var(--s1);
-  border-bottom: 1px solid var(--b1);
-  flex-shrink: 0; flex-wrap: wrap;
-}
-
-#fp-crumb {
-  flex: 1; min-width: 0;
-  font-family: var(--mono); font-size: 12px;
-  color: var(--t2); overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
-}
-#fp-crumb b { color: var(--text); }
-
-#file-filter {
-  height: 28px; padding: 0 10px; width: 170px;
-  background: var(--bg); border: 1px solid var(--b1);
-  border-radius: 6px; color: var(--text);
-  font-size: 11px; font-family: var(--mono); outline: none;
-}
-#file-filter:focus { border-color: var(--b2); }
-#file-filter::placeholder { color: var(--t3); }
-
-.fp-cb-wrap {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 11px; color: var(--t2);
-  cursor: pointer; user-select: none; white-space: nowrap;
-}
-
-.abtn {
-  height: 28px; padding: 0 12px;
-  border-radius: 6px; border: 1px solid var(--b2);
-  background: transparent; color: var(--t2);
-  font-size: 11px; cursor: pointer;
-  transition: all 0.1s; white-space: nowrap;
-  font-family: var(--sans); display: flex; align-items: center; gap: 5px;
-}
-.abtn:hover { border-color: var(--t2); color: var(--text); }
-.abtn:disabled { opacity: 0.25; cursor: not-allowed; }
-.abtn.g { border-color: rgba(48,217,138,0.4); color: var(--green); }
-.abtn.g:hover { background: rgba(48,217,138,0.08); border-color: var(--green); }
-.abtn.p { border-color: var(--a-mid); color: var(--accent); }
-.abtn.p:hover { background: var(--a-dim); }
-
-#file-list { flex: 1; overflow-y: auto; }
-#file-list::-webkit-scrollbar { width: 3px; }
-#file-list::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 2px; }
-
-.frow {
+.folder-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 14px;
+  padding: 9px 12px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  min-height: 52px;
+}
+.folder-item:hover { background: var(--s2); }
+.folder-item.active { background: var(--acc-d); border-left-color: var(--acc); }
+
+.folder-icon {
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  color: var(--amb);
+  opacity: 0.75;
+}
+.folder-item.active .folder-icon { opacity: 1; color: var(--acc2); }
+
+.folder-info { flex: 1; min-width: 0; }
+.folder-name {
+  font-size: 13px; font-weight: 600;
+  color: var(--tx1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.folder-sub {
+  font-size: 11px; color: var(--tx3);
+  font-family: var(--mono);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.folder-badge {
+  flex-shrink: 0;
+  min-width: 22px; height: 20px;
+  border-radius: 10px;
+  background: var(--b1);
+  color: var(--tx2);
+  font-size: 11px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 6px;
+}
+.folder-item.active .folder-badge { background: var(--acc-d); color: var(--acc2); }
+
+.sidebar-footer {
+  padding: 10px 12px;
+  border-top: 1px solid var(--b1);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; color: var(--tx3);
+  flex-shrink: 0;
+}
+.sf-pdfs { color: var(--grn); font-weight: 600; }
+
+/* ══════════════════════════════════════════
+   FILE PANEL
+══════════════════════════════════════════ */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Toolbar */
+.file-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 14px;
   border-bottom: 1px solid var(--b1);
-  transition: background 0.08s;
+  background: var(--s1);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  min-height: 50px;
 }
-.frow:last-child { border-bottom: none; }
-.frow:hover { background: var(--s1); }
 
-.frow-icon { font-size: 13px; flex-shrink: 0; opacity: 0.5; }
-.frow-name {
-  flex: 1; min-width: 0;
-  font-family: var(--mono); font-size: 11px; color: var(--text);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.breadcrumb {
+  display: flex; align-items: center; gap: 5px;
+  flex: 1; min-width: 80px;
+  overflow: hidden;
 }
-.frow-btns { display: flex; gap: 4px; flex-shrink: 0; }
+.breadcrumb-parent { color: var(--tx3); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.breadcrumb-sep { color: var(--tx3); flex-shrink: 0; font-size: 12px; }
+.breadcrumb-name { color: var(--tx1); font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
 
-.xbtn {
-  height: 24px; padding: 0 9px;
-  border-radius: 5px; border: 1px solid var(--b2);
-  background: transparent; color: var(--t2);
-  font-size: 10px; cursor: pointer;
-  transition: all 0.1s; white-space: nowrap;
-  font-family: var(--mono); text-decoration: none;
-  display: flex; align-items: center;
+.file-filter-input {
+  background: var(--bg);
+  border: 1px solid var(--b1);
+  border-radius: 6px;
+  color: var(--tx1);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 5px 10px;
+  width: 150px;
+  transition: border-color 0.2s ease;
+  outline: none;
+  flex-shrink: 0;
 }
-.xbtn:hover { border-color: var(--t2); color: var(--text); }
-.xbtn.dl { border-color: rgba(48,217,138,0.35); color: var(--green); }
-.xbtn.dl:hover { background: rgba(48,217,138,0.08); }
+.file-filter-input:focus { border-color: var(--acc); }
+.file-filter-input::placeholder { color: var(--tx3); }
 
-/* ─── EMPTY STATE ─────────────────────────────────────────── */
+.all-checkbox-wrap {
+  display: flex; align-items: center; gap: 6px;
+  flex-shrink: 0;
+}
+.all-checkbox-wrap label { font-size: 12px; color: var(--tx2); cursor: pointer; user-select: none; }
+
+/* Custom checkbox — override for toggle-wrap which has its own */
+.file-toolbar input[type="checkbox"],
+.file-list input[type="checkbox"],
+.all-checkbox-wrap input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px; height: 16px;
+  border: 1.5px solid var(--b2);
+  border-radius: 4px;
+  background: var(--bg);
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  vertical-align: middle;
+}
+.file-toolbar input[type="checkbox"]:hover,
+.file-list input[type="checkbox"]:hover,
+.all-checkbox-wrap input[type="checkbox"]:hover { border-color: var(--acc); }
+.file-toolbar input[type="checkbox"]:checked,
+.file-list input[type="checkbox"]:checked,
+.all-checkbox-wrap input[type="checkbox"]:checked {
+  background: var(--acc); border-color: var(--acc);
+}
+.file-toolbar input[type="checkbox"]:checked::after,
+.file-list input[type="checkbox"]:checked::after,
+.all-checkbox-wrap input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px; top: 1.5px;
+  width: 5px; height: 8px;
+  border: 2px solid #fff;
+  border-top: none; border-left: none;
+  transform: rotate(45deg);
+}
+.file-toolbar input[type="checkbox"]:indeterminate,
+.all-checkbox-wrap input[type="checkbox"]:indeterminate {
+  background: var(--acc-d); border-color: var(--acc);
+}
+.file-toolbar input[type="checkbox"]:indeterminate::after,
+.all-checkbox-wrap input[type="checkbox"]:indeterminate::after {
+  content: '';
+  position: absolute;
+  left: 3px; top: 6px;
+  width: 8px; height: 2px;
+  background: var(--acc);
+  border-radius: 1px;
+}
+
+.toolbar-btn {
+  background: var(--s2);
+  border: 1px solid var(--b1);
+  border-radius: 6px;
+  color: var(--tx2);
+  font-family: var(--sans);
+  font-size: 12px; font-weight: 500;
+  padding: 0 10px;
+  height: 30px;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+  white-space: nowrap; flex-shrink: 0;
+}
+.toolbar-btn:hover { border-color: var(--acc); color: var(--acc2); background: var(--acc-d); }
+.toolbar-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+.toolbar-btn.primary { background: var(--acc); border-color: var(--acc); color: #fff; }
+.toolbar-btn.primary:hover { background: var(--acc2); border-color: var(--acc2); color: #fff; }
+
+/* File list */
+.file-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.file-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px;
+  height: 42px;
+  transition: background 0.12s ease;
+  cursor: default;
+  position: relative;
+}
+.file-row:hover { background: var(--s1); }
+.file-row.selected { background: var(--acc-d); }
+.file-row.selected:hover { background: rgba(124,106,247,0.18); }
+
+.file-row-icon { flex-shrink: 0; font-size: 15px; line-height: 1; }
+.file-row-name {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--tx1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.file-row-actions {
+  display: none;
+  align-items: center; gap: 4px;
+  flex-shrink: 0;
+}
+.file-row:hover .file-row-actions { display: flex; }
+
+.row-action-btn {
+  background: var(--s2);
+  border: 1px solid var(--b1);
+  border-radius: 5px;
+  color: var(--tx2);
+  font-family: var(--sans);
+  font-size: 11px; font-weight: 500;
+  padding: 3px 9px;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  height: 26px; white-space: nowrap;
+}
+.row-action-btn:hover { border-color: var(--acc); color: var(--acc2); background: var(--acc-d); }
+
+/* Empty / waiting states */
 .empty-state {
+  flex: 1;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  height: 100%; gap: 10px;
-  color: var(--t3); font-family: var(--mono); font-size: 12px;
-  text-align: center; line-height: 1.8;
+  gap: 14px;
+  color: var(--tx3);
+  padding: 40px; text-align: center;
 }
-.empty-state .ei { font-size: 36px; opacity: 0.25; margin-bottom: 4px; }
+.empty-icon { font-size: 48px; opacity: 0.2; line-height: 1; }
+.empty-title { font-size: 15px; font-weight: 600; color: var(--tx2); }
+.empty-sub { font-size: 13px; color: var(--tx3); max-width: 260px; line-height: 1.6; }
 
-/* ─── WELCOME SCREEN ──────────────────────────────────────── */
-#welcome {
-  display: flex;
+.scan-waiting {
   flex: 1;
-  overflow: hidden;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px; color: var(--tx3); padding: 40px; text-align: center;
 }
-#welcome.hidden { display: none; }
-
-.welcome-inner {
-  margin: auto;
-  text-align: center;
-  padding: 40px;
+.scan-waiting-spinner {
+  width: 32px; height: 32px;
+  border: 2px solid var(--b2);
+  border-top-color: var(--acc);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
 }
-.welcome-logo {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--accent);
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-}
-.welcome-title {
-  font-size: 42px; font-weight: 600;
-  letter-spacing: -2px; line-height: 1;
-  color: var(--text); margin-bottom: 12px;
-}
-.welcome-title span { color: var(--accent); }
-.welcome-sub { color: var(--t3); font-size: 13px; line-height: 1.7; max-width: 380px; }
-.welcome-hints {
-  margin-top: 28px;
-  display: flex; gap: 12px;
-  justify-content: center; flex-wrap: wrap;
-}
-.hint-chip {
-  background: var(--s2); border: 1px solid var(--b1);
-  border-radius: 6px; padding: 8px 14px;
-  font-size: 11px; font-family: var(--mono);
-  color: var(--t2); text-align: left;
-}
-.hint-chip b { color: var(--text); display: block; margin-bottom: 2px; }
-
-/* ─── INPUTS ──────────────────────────────────────────────── */
-input[type="checkbox"] {
-  appearance: none;
-  width: 13px; height: 13px;
-  background: var(--bg); border: 1px solid var(--b2);
-  border-radius: 3px; cursor: pointer;
-  position: relative; flex-shrink: 0; transition: all 0.1s;
-}
-input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
-input[type="checkbox"]:checked::after {
-  content: '✓'; position: absolute; top: -2px; left: 1px;
-  font-size: 9px; color: #fff; font-weight: 700;
-}
-input[type="checkbox"]:indeterminate { background: var(--a-dim); border-color: var(--accent); }
-input[type="checkbox"]:indeterminate::after {
-  content: '–'; position: absolute; top: -2px; left: 2px;
-  font-size: 10px; color: var(--accent); font-weight: 700;
-}
-
-/* ─── SPINNER / TOAST ─────────────────────────────────────── */
-.spin {
-  display: inline-block; width: 11px; height: 11px;
-  border: 2px solid rgba(255,255,255,0.2); border-top-color: #fff;
-  border-radius: 50%; animation: rot 0.5s linear infinite;
-}
-@keyframes rot { to { transform: rotate(360deg); } }
-
-#toast {
-  position: fixed; bottom: 18px; right: 18px;
-  background: var(--s3); border: 1px solid var(--b2);
-  border-radius: 8px; padding: 9px 14px;
-  font-size: 11px; color: var(--text);
-  z-index: 9999; font-family: var(--mono);
-  transform: translateY(50px); opacity: 0;
-  transition: all 0.2s; pointer-events: none;
-}
-#toast.on { transform: translateY(0); opacity: 1; }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
-<div id="topbar">
-  <span class="logo">PDF/HUNTER</span>
-  <input type="url" id="url-input" placeholder="https://example.com/revision/" autocomplete="off" />
-  <label class="top-opt on" id="opt-path">
-    <input type="checkbox" id="strict-path" checked onchange="syncOpt('opt-path',this)"> 🔒 Path
-  </label>
-  <label class="top-opt on" id="opt-domain">
-    <input type="checkbox" id="same-domain" checked onchange="syncOpt('opt-domain',this)"> Domain
-  </label>
-  <select id="depth-sel">
-    <option value="1">Depth 1</option>
-    <option value="2" selected>Depth 2</option>
-    <option value="3">Depth 3</option>
-    <option value="4">Depth 4</option>
-    <option value="5">Depth 5</option>
-  </select>
-  <input type="text" id="prescan-filter" placeholder="filename filter…" />
-  <button id="scan-btn" onclick="startScan()"><span id="btn-lbl">Scan</span></button>
-  <button id="stop-btn" onclick="stopScan()">Stop</button>
-</div>
+<!-- ══════════════════════════════════
+     WELCOME SCREEN
+════════════════════════════════════ -->
+<div id="welcome" role="main" aria-label="PDF Hunter start screen">
+  <div class="welcome-glow" aria-hidden="true"></div>
 
-<!-- STATUS STRIP -->
-<div id="statusbar">
-  <div class="sbar-dot" id="sbar-dot"></div>
-  <span id="sbar-text">Scanning…</span>
-  <span class="sbar-num"><b id="s-pages">0</b> pages</span>
-  <span class="sbar-num"><b class="hi" id="s-pdfs">0</b> PDFs</span>
-  <div class="prog-track"><div class="prog-bar" id="prog-bar"></div></div>
-  <span id="sbar-peek" style="font-size:10px;color:var(--t3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-</div>
-
-<!-- WELCOME -->
-<div id="welcome">
   <div class="welcome-inner">
-    <div class="welcome-logo">PDF Hunter</div>
-    <div class="welcome-title">Grab every<br><span>PDF.</span></div>
-    <div class="welcome-sub">Crawl any website and bulk-download all its PDFs — organised by folder, no browser limits.</div>
-    <div class="welcome-hints">
-      <div class="hint-chip"><b>Path lock</b>stays under the starting URL path</div>
-      <div class="hint-chip"><b>Depth 2</b>covers most revision sites</div>
-      <div class="hint-chip"><b>filename filter</b>e.g. <code>qp -specimen</code></div>
+    <div class="badge" aria-hidden="true">
+      <div class="badge-dot"></div>
+      PDF HUNTER
     </div>
-  </div>
-</div>
 
-<!-- MAIN LAYOUT -->
-<div id="layout">
+    <h1 class="welcome-heading">Find every <span>PDF.</span></h1>
+    <p class="welcome-sub">Crawl any website and bulk-download all PDFs, organised by folder.</p>
 
-  <!-- LEFT: FOLDER TREE -->
-  <aside id="sidebar">
-    <div class="sb-head">
-      <div class="sb-label">Folders</div>
-      <input type="text" id="folder-search" placeholder="Search…" oninput="renderSidebar()" />
+    <!-- Hero search bar -->
+    <div class="hero-bar" id="hero-bar">
+      <div class="hero-bar-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </div>
+      <input
+        id="hero-url"
+        class="hero-url-input"
+        type="url"
+        placeholder="https://physicsandmathstutor.com/a-level/physics/"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Website URL to scan"
+      >
+      <button class="hero-scan-btn" id="hero-scan-btn" aria-label="Start scan">
+        Scan
+      </button>
     </div>
-    <div id="folder-list"></div>
-    <div class="sb-foot" id="sb-foot"></div>
-  </aside>
 
-  <!-- RIGHT: FILE PANEL -->
-  <div id="filepanel">
-    <div id="fp-toolbar">
-      <div id="fp-crumb">Select a folder</div>
-      <input type="text" id="file-filter" placeholder="filter files…" oninput="renderFiles()" />
-      <label class="fp-cb-wrap">
-        <input type="checkbox" id="sel-all-cb" onchange="toggleSelAll(this.checked)"> All
+    <!-- Options row -->
+    <div class="options-row" role="group" aria-label="Scan options">
+      <!-- Path lock toggle -->
+      <label class="toggle-wrap" title="Only crawl pages under the starting URL path">
+        <input type="checkbox" id="opt-strict" checked aria-label="Path lock — stay under the starting path">
+        <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+        <span class="toggle-label">Path lock</span>
       </label>
-      <button class="abtn g" id="dl-folder-btn" onclick="dlFolder()">⬇ Folder</button>
-      <button class="abtn p" id="dl-sel-btn" onclick="dlSelected()" disabled>⬇ Sel (<span id="sel-ct">0</span>)</button>
-      <button class="abtn" onclick="copyLinks()">Copy links</button>
-      <button class="abtn g" onclick="dlAll()">⬇ All</button>
+
+      <!-- Same domain toggle -->
+      <label class="toggle-wrap" title="Stay on the same domain">
+        <input type="checkbox" id="opt-domain" checked aria-label="Same domain — do not follow external links">
+        <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+        <span class="toggle-label">Same domain</span>
+      </label>
+
+      <!-- Depth select -->
+      <div class="depth-wrap">
+        <label for="opt-depth">Depth</label>
+        <select id="opt-depth" class="depth-select" aria-label="Crawl depth">
+          <option value="1">1 — shallow</option>
+          <option value="2" selected>2 — normal</option>
+          <option value="3">3 — deep</option>
+          <option value="4">4 — very deep</option>
+          <option value="5">5 — full site</option>
+        </select>
+      </div>
+
+      <!-- Filter input -->
+      <div class="filter-wrap">
+        <label for="opt-filter">Filter</label>
+        <input
+          id="opt-filter"
+          class="filter-input-hero"
+          type="text"
+          placeholder="physics -mark"
+          aria-label="Filename filter — include words, use -word to exclude"
+        >
+      </div>
     </div>
-    <div id="file-list">
-      <div class="empty-state"><div class="ei">📂</div>Select a folder from the left</div>
+
+    <!-- Recent URLs -->
+    <div class="recent-section" id="recent-section" style="display:none" aria-label="Recent URLs">
+      <div class="recent-label">Recent</div>
+      <div class="recent-chips" id="recent-chips" role="list"></div>
     </div>
   </div>
 
+  <p class="welcome-hint" aria-hidden="true">Press ↵ to scan &nbsp;·&nbsp; Esc to stop</p>
 </div>
 
-<div id="toast"></div>
+<!-- ══════════════════════════════════
+     APP SHELL
+════════════════════════════════════ -->
+<div id="app" aria-label="PDF Hunter">
+
+  <!-- Compact sticky header -->
+  <header>
+    <a href="#" class="header-logo" id="new-scan-logo" aria-label="PDF Hunter — go to start screen">
+      <div class="header-logo-mark" aria-hidden="true">PH</div>
+      <span class="header-logo-text">PDF Hunter</span>
+    </a>
+
+    <input
+      id="header-url"
+      class="header-url-input"
+      type="url"
+      placeholder="https://…"
+      autocomplete="off"
+      spellcheck="false"
+      aria-label="URL — press Enter to re-scan"
+    >
+
+    <button class="header-stop-btn" id="header-stop-btn" aria-label="Stop scan" disabled>
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="7" height="7" rx="1.5"/>
+      </svg>
+      Stop
+    </button>
+
+    <button class="header-new-btn" id="header-new-btn" aria-label="Start a new scan">
+      New scan
+    </button>
+  </header>
+
+  <!-- Progress strip -->
+  <div id="progress-strip" role="status" aria-live="polite" aria-atomic="false">
+    <div class="pulse-dot idle" id="pulse-dot" aria-hidden="true"></div>
+    <span id="status-text">Ready</span>
+    <div class="stat-item" aria-label="Pages checked">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18"/>
+      </svg>
+      <span class="val" id="pages-count">0</span>&nbsp;pages
+    </div>
+    <div class="stat-item" aria-label="PDFs found">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <span class="val green" id="pdf-count">0</span>&nbsp;PDFs
+    </div>
+    <div class="progress-bar-wrap" aria-hidden="true">
+      <div class="progress-bar-fill" id="progress-bar"></div>
+    </div>
+  </div>
+
+  <!-- Two-panel layout -->
+  <div id="panels">
+
+    <!-- Sidebar -->
+    <aside aria-label="Folder list">
+      <div class="sidebar-header">
+        <div class="sidebar-title-row">
+          <span class="sidebar-title">Folders</span>
+          <span class="folder-count-badge" id="folder-count-badge" aria-label="Folder count">0</span>
+        </div>
+        <input
+          type="search"
+          class="sidebar-search"
+          id="folder-search"
+          placeholder="Search folders…"
+          aria-label="Search folders"
+        >
+      </div>
+
+      <nav class="folder-list" id="folder-list" aria-label="PDF folders">
+        <!-- Populated by JS -->
+      </nav>
+
+      <div class="sidebar-footer" aria-label="Totals">
+        <span><span class="sf-pdfs" id="footer-pdf-count">0</span> PDFs</span>
+        <span id="footer-folder-count">0 folders</span>
+      </div>
+    </aside>
+
+    <!-- File panel -->
+    <main>
+      <div class="file-toolbar" role="toolbar" aria-label="File actions">
+        <div class="breadcrumb" id="breadcrumb" aria-label="Current folder">
+          <span class="breadcrumb-name" id="breadcrumb-name">—</span>
+        </div>
+
+        <input
+          type="search"
+          class="file-filter-input"
+          id="file-filter"
+          placeholder="Filter… (word -word)"
+          aria-label="Filter files — use -word to exclude"
+        >
+
+        <div class="all-checkbox-wrap">
+          <input type="checkbox" id="all-checkbox" aria-label="Select all files in folder">
+          <label for="all-checkbox">All</label>
+        </div>
+
+        <button class="toolbar-btn" id="dl-folder-btn" disabled aria-label="Download this folder as zip">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Folder
+        </button>
+
+        <button class="toolbar-btn" id="dl-selected-btn" disabled aria-label="Download selected files as zip">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span id="dl-selected-label">Selected</span>
+        </button>
+
+        <button class="toolbar-btn" id="copy-links-btn" disabled aria-label="Copy folder links to clipboard">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copy links
+        </button>
+
+        <button class="toolbar-btn primary" id="dl-all-btn" disabled aria-label="Download all PDFs as zip">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          All
+        </button>
+      </div>
+
+      <!-- File list area -->
+      <div id="file-area" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+        <div class="empty-state">
+          <div class="empty-icon" aria-hidden="true">📂</div>
+          <div class="empty-title">No PDFs yet</div>
+          <div class="empty-sub">Start a scan to find PDFs on a website</div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+</div><!-- /app -->
 
 <script>
-const API = 'http://localhost:7734';
-let polling = null, lastLogTime = 0;
-let allPDFs = [], scanRunning = false;
-let selectedURLs = new Set();
-let currentFolder = null;
-let _curFiles = [];
-let _sidebarEntries = [];
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
+let _allPdfs      = [];
+let _folderMap    = new Map();
+let _curFolder    = null;
+let _curFiles     = [];
+let _selectedIdxs = new Set();
+let _scanning     = false;
+let _scanDone     = false;
+let _pollTimer    = null;
+let _lastT        = 0;
 
-// ── UTILS ──────────────────────────────────────────────────
+const RECENT_KEY = 'pfh_recent';
+const MAX_RECENT = 5;
+const POLL_MS    = 700;
 
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('on');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('on'), 2600);
-}
-
-function syncOpt(id, cb) {
-  document.getElementById(id).classList.toggle('on', cb.checked);
+/* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
 }
 
 function getFolderPath(url) {
   try {
-    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    const u = new URL(url);
+    const parts = u.pathname.split('/').filter(Boolean);
+    if (parts.length <= 1) return '/';
     parts.pop();
-    return parts.length ? '/' + parts.join('/') : '/';
-  } catch { return '/'; }
-}
-
-function groupByFolder(pdfs) {
-  const m = new Map();
-  for (const p of pdfs) {
-    const f = getFolderPath(p.url);
-    if (!m.has(f)) m.set(f, []);
-    m.get(f).push(p);
+    return '/' + parts.join('/');
+  } catch {
+    return '/';
   }
-  return m;
 }
 
 function folderParts(path) {
-  if (path === '/') return { main: 'root', sub: '' };
-  const parts = path.split('/').filter(Boolean);
-  return {
-    main: parts[parts.length - 1],
-    sub: parts.length > 1 ? parts.slice(0, -1).join(' / ') : ''
-  };
+  const segs = path.split('/').filter(Boolean);
+  if (!segs.length) return { main: '(root)', sub: '' };
+  const main = segs[segs.length - 1];
+  const sub  = segs.length > 1 ? '/' + segs.slice(0, -1).join('/') : '';
+  return { main, sub };
 }
 
-// ── SIDEBAR ────────────────────────────────────────────────
-
-function renderSidebar() {
-  const q = (document.getElementById('folder-search').value || '').toLowerCase();
-  const groups = groupByFolder(allPDFs);
-
-  _sidebarEntries = [...groups.entries()]
-    .filter(([f]) => !q || f.toLowerCase().includes(q))
-    .sort((a, b) => b[1].length - a[1].length);
-
-  const list = document.getElementById('folder-list');
-
-  if (!_sidebarEntries.length) {
-    list.innerHTML = '<div class="empty-state" style="padding:24px;height:auto">No folders</div>';
-    document.getElementById('sb-foot').innerHTML = '';
-    return;
+function groupByFolder(pdfs) {
+  const map = new Map();
+  for (const pdf of pdfs) {
+    const folder = getFolderPath(pdf.url);
+    if (!map.has(folder)) map.set(folder, []);
+    map.get(folder).push(pdf);
   }
-
-  list.innerHTML = _sidebarEntries.map(([folder, pdfs], i) => {
-    const { main, sub } = folderParts(folder);
-    const sel = folder === currentFolder ? 'sel' : '';
-    return `<div class="fitem ${sel}" onclick="selectFolder(${i})">
-      <span class="fitem-icon">📁</span>
-      <div class="fitem-names">
-        <div class="fitem-main">${esc(main)}</div>
-        ${sub ? `<div class="fitem-sub">${esc(sub)}</div>` : ''}
-      </div>
-      <span class="fitem-ct">${pdfs.length}</span>
-    </div>`;
-  }).join('');
-
-  const totalFolders = groups.size;
-  document.getElementById('sb-foot').innerHTML =
-    `<b>${allPDFs.length}</b> PDFs &nbsp;·&nbsp; ${totalFolders} folder${totalFolders !== 1 ? 's' : ''}`;
+  return new Map([...map.entries()].sort((a, b) => b[1].length - a[1].length));
 }
 
-function selectFolder(idx) {
-  const entry = _sidebarEntries[idx];
-  if (!entry) return;
-  currentFolder = entry[0];
-  renderSidebar();
-  renderFiles();
+function parseFileFilter(raw) {
+  const terms   = (raw || '').toLowerCase().split(/\s+/).filter(Boolean);
+  const include = terms.filter(t => !t.startsWith('-'));
+  const exclude = terms.filter(t => t.startsWith('-') && t.length > 1).map(t => t.slice(1));
+  return { include, exclude };
 }
 
-// ── FILE PANEL ─────────────────────────────────────────────
-
-function getVisibleFiles() {
-  if (!currentFolder) return [];
-  const groups = groupByFolder(allPDFs);
-  const files = groups.get(currentFolder) || [];
-  const q = (document.getElementById('file-filter').value || '').toLowerCase().trim();
-  if (!q) return files;
-  const terms = q.split(/\s+/);
-  const inc = terms.filter(t => !t.startsWith('-') && t);
-  const exc = terms.filter(t => t.startsWith('-') && t.length > 1).map(t => t.slice(1));
-  return files.filter(p => {
-    const n = p.name.toLowerCase();
-    return inc.every(t => n.includes(t)) && !exc.some(t => n.includes(t));
-  });
+function fileMatchesFilter(name, { include, exclude }) {
+  const n = (name || '').toLowerCase();
+  return include.every(t => n.includes(t)) && !exclude.some(t => n.includes(t));
 }
-
-function renderFiles() {
-  const files = getVisibleFiles();
-  _curFiles = files;
-
-  const crumb = document.getElementById('fp-crumb');
-  const list = document.getElementById('file-list');
-  const selAllCb = document.getElementById('sel-all-cb');
-
-  if (!currentFolder) {
-    crumb.innerHTML = 'Select a folder';
-    list.innerHTML = '<div class="empty-state"><div class="ei">📂</div>Select a folder from the left</div>';
-    return;
-  }
-
-  const { main, sub } = folderParts(currentFolder);
-  crumb.innerHTML = sub ? `<span style="color:var(--t3)">${esc(sub)} / </span><b>${esc(main)}</b>` : `<b>${esc(main)}</b>`;
-
-  if (!files.length) {
-    list.innerHTML = '<div class="empty-state"><div class="ei">🔍</div>No files match filter</div>';
-    selAllCb.checked = false; selAllCb.indeterminate = false;
-    return;
-  }
-
-  const allSel = files.every(p => selectedURLs.has(p.url));
-  const someSel = files.some(p => selectedURLs.has(p.url));
-  selAllCb.checked = allSel;
-  selAllCb.indeterminate = someSel && !allSel;
-
-  list.innerHTML = files.map((pdf, i) => {
-    const name = esc(pdf.raw_name);
-    const checked = selectedURLs.has(pdf.url) ? 'checked' : '';
-    return `<div class="frow">
-      <input type="checkbox" ${checked} onchange="onFileCheck(${i},this.checked)">
-      <span class="frow-icon">📄</span>
-      <span class="frow-name" title="${name}">${name}</span>
-      <div class="frow-btns">
-        <a class="xbtn" href="${pdf.url}" target="_blank" rel="noopener">Open</a>
-        <button class="xbtn dl" onclick="triggerZip([_curFiles[${i}]],_curFiles[${i}].name.replace(/\\.pdf$/i,'')+'.zip')">⬇</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function onFileCheck(i, checked) {
-  const pdf = _curFiles[i];
-  if (!pdf) return;
-  checked ? selectedURLs.add(pdf.url) : selectedURLs.delete(pdf.url);
-  updateSelCount();
-  const files = getVisibleFiles();
-  const cb = document.getElementById('sel-all-cb');
-  const allSel = files.every(p => selectedURLs.has(p.url));
-  const someSel = files.some(p => selectedURLs.has(p.url));
-  cb.checked = allSel; cb.indeterminate = someSel && !allSel;
-}
-
-function toggleSelAll(checked) {
-  getVisibleFiles().forEach(p => checked ? selectedURLs.add(p.url) : selectedURLs.delete(p.url));
-  updateSelCount(); renderFiles();
-}
-
-function updateSelCount() {
-  const n = selectedURLs.size;
-  document.getElementById('sel-ct').textContent = n;
-  document.getElementById('dl-sel-btn').disabled = n === 0;
-}
-
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ── DOWNLOADS ──────────────────────────────────────────────
 
 function triggerZip(pdfs, filename) {
   if (!pdfs.length) return;
-  const a = document.createElement('a');
-  a.href = `${API}/zip?urls=${encodeURIComponent(pdfs.map(p=>p.url).join('|'))}&names=${encodeURIComponent(pdfs.map(p=>p.name).join('|'))}`;
-  a.download = filename; a.style.display = 'none';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  const urls  = pdfs.map(p => p.url).join('|');
+  const names = pdfs.map(p => p.name || p.raw_name).join('|');
+  const a     = document.createElement('a');
+  a.href      = `/zip?urls=${encodeURIComponent(urls)}&names=${encodeURIComponent(names)}`;
+  a.download  = filename || 'pdf_hunter.zip';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
-function dlFolder() {
-  if (!currentFolder) return;
-  const pdfs = groupByFolder(allPDFs).get(currentFolder) || [];
-  if (!pdfs.length) return;
-  toast(`Zipping ${pdfs.length} PDFs…`);
-  triggerZip(pdfs, folderParts(currentFolder).main + '.zip');
+/* ══════════════════════════════════════════
+   RECENT URLs
+══════════════════════════════════════════ */
+function getRecent() {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch { return []; }
+}
+function addRecent(url) {
+  let arr = getRecent().filter(u => u !== url);
+  arr.unshift(url);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(arr.slice(0, MAX_RECENT)));
+}
+function removeRecent(url) {
+  localStorage.setItem(RECENT_KEY, JSON.stringify(getRecent().filter(u => u !== url)));
 }
 
-function dlSelected() {
-  const sel = allPDFs.filter(p => selectedURLs.has(p.url));
-  if (!sel.length) return;
-  toast(`Zipping ${sel.length} PDFs…`);
-  triggerZip(sel, 'selected.zip');
+function renderRecent() {
+  const arr     = getRecent();
+  const section = document.getElementById('recent-section');
+  const chips   = document.getElementById('recent-chips');
+  if (!arr.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  chips.innerHTML = arr.map(url => `
+    <div class="recent-chip" data-url="${esc(url)}" role="listitem">
+      <button
+        class="recent-chip-text"
+        style="background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;"
+        aria-label="Scan ${esc(url)}"
+        data-chip-url="${esc(url)}"
+      >${esc(url)}</button>
+      <button class="recent-chip-x" aria-label="Remove ${esc(url)}" data-remove="${esc(url)}">×</button>
+    </div>
+  `).join('');
+
+  chips.querySelectorAll('[data-chip-url]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('hero-url').value = btn.dataset.chipUrl;
+    });
+  });
+  chips.querySelectorAll('.recent-chip-x').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      removeRecent(btn.dataset.remove);
+      renderRecent();
+    });
+  });
 }
 
-function dlAll() {
-  if (!allPDFs.length) return;
-  toast(`Zipping ${allPDFs.length} PDFs…`);
-  triggerZip(allPDFs, 'all_pdfs.zip');
-}
+/* ══════════════════════════════════════════
+   SCAN
+══════════════════════════════════════════ */
+async function startScan(url) {
+  if (!url) return;
+  const depth      = parseInt(document.getElementById('opt-depth').value, 10);
+  const sameDomain = document.getElementById('opt-domain').checked;
+  const strictPath = document.getElementById('opt-strict').checked;
+  const nameFilter = document.getElementById('opt-filter').value.trim();
 
-function copyLinks() {
-  navigator.clipboard.writeText(allPDFs.map(p=>p.url).join('\n'))
-    .then(() => toast(`Copied ${allPDFs.length} links ✓`));
-}
+  addRecent(url);
+  _allPdfs      = [];
+  _folderMap    = new Map();
+  _curFolder    = null;
+  _curFiles     = [];
+  _selectedIdxs = new Set();
+  _scanning     = true;
+  _scanDone     = false;
+  _lastT        = 0;
 
-// ── SCAN ───────────────────────────────────────────────────
+  document.getElementById('header-url').value = url;
 
-async function startScan() {
-  const url = document.getElementById('url-input').value.trim();
-  if (!url) { toast('Enter a URL first'); return; }
-
-  allPDFs = []; selectedURLs = new Set(); currentFolder = null; lastLogTime = 0;
-  updateSelCount();
-
-  document.getElementById('scan-btn').disabled = true;
-  document.getElementById('btn-lbl').innerHTML = '<span class="spin"></span>';
-  document.getElementById('stop-btn').style.display = 'block';
-  document.getElementById('statusbar').classList.add('on');
-  document.getElementById('sbar-dot').className = 'sbar-dot scanning';
-  document.getElementById('sbar-text').textContent = 'Scanning…';
-  document.getElementById('s-pages').textContent = '0';
-  document.getElementById('s-pdfs').textContent = '0';
-  document.getElementById('prog-bar').className = 'prog-bar';
-  document.getElementById('prog-bar').style.width = '3%';
-  document.getElementById('welcome').classList.add('hidden');
-  document.getElementById('layout').classList.add('on');
-  document.getElementById('folder-list').innerHTML = '';
-  document.getElementById('file-list').innerHTML = '<div class="empty-state"><div class="ei">⏳</div>Scanning…</div>';
-  document.getElementById('sb-foot').innerHTML = '';
+  showApp();
+  setStatusText('Starting scan…');
+  setPulseDot('running');
+  setProgressBar(0, true);
+  document.getElementById('header-stop-btn').disabled = false;
+  updateStats(0, 0);
+  renderFolders();
+  renderFileArea();
+  updateToolbarButtons();
 
   try {
-    const r = await fetch(`${API}/scan`, {
+    const res = await fetch('/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url,
-        depth: parseInt(document.getElementById('depth-sel').value),
-        same_domain: document.getElementById('same-domain').checked,
-        strict_path: document.getElementById('strict-path').checked,
-        name_filter: document.getElementById('prescan-filter').value.trim()
-      })
+      body: JSON.stringify({ url, depth, same_domain: sameDomain, strict_path: strictPath, name_filter: nameFilter })
     });
-    if (!r.ok) { const e = await r.json(); toast('Error: ' + e.error); resetScanBtn(); return; }
-    scanRunning = true;
-    polling = setInterval(pollStatus, 700);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setStatusText('Error: ' + (d.error || res.status));
+      _scanning = false;
+      setPulseDot('idle');
+      document.getElementById('header-stop-btn').disabled = true;
+      return;
+    }
+  } catch (err) {
+    setStatusText('Failed to connect to server');
+    _scanning = false;
+    setPulseDot('idle');
+    document.getElementById('header-stop-btn').disabled = true;
+    return;
+  }
+
+  startPolling();
+}
+
+async function stopScan() {
+  try { await fetch('/stop'); } catch {}
+  _scanning = false;
+  stopPolling();
+  setPulseDot('idle');
+  setProgressBar(0, false);
+  setStatusText('Stopped');
+  document.getElementById('header-stop-btn').disabled = true;
+}
+
+function startPolling() {
+  stopPolling();
+  _pollTimer = setInterval(poll, POLL_MS);
+  poll();
+}
+function stopPolling() {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+}
+
+async function poll() {
+  try {
+    const res  = await fetch(`/status?since=${_lastT}`);
+    const data = await res.json();
+
+    if (data.logs && data.logs.length) {
+      _lastT = Math.max(_lastT, ...data.logs.map(l => l.t));
+      const last = data.logs[data.logs.length - 1];
+      setStatusText(last.msg);
+    }
+
+    const prevCount = _allPdfs.length;
+    if (data.pdfs) _allPdfs = data.pdfs;
+
+    updateStats(data.pages_checked || 0, data.pdf_count || 0);
+
+    const newCount = _allPdfs.length;
+    if (newCount !== prevCount || (!_curFolder && newCount > 0)) {
+      rebuildFolders();
+    }
+
+    if (!data.running && data.done) {
+      _scanning = false;
+      _scanDone = true;
+      stopPolling();
+      setPulseDot('done');
+      setProgressBar(100, false);
+      document.getElementById('header-stop-btn').disabled = true;
+      setStatusText(`Done — ${newCount} PDF${newCount !== 1 ? 's' : ''} found across ${data.pages_checked || 0} pages`);
+    }
   } catch {
-    toast('Cannot reach server — is server.py running?');
-    resetScanBtn();
+    // Network hiccup — keep polling
   }
 }
 
-async function stopScan() { await fetch(`${API}/stop`).catch(()=>{}); }
-
-function resetScanBtn() {
-  document.getElementById('scan-btn').disabled = false;
-  document.getElementById('btn-lbl').textContent = 'Scan';
-  document.getElementById('stop-btn').style.display = 'none';
-  scanRunning = false;
+/* ══════════════════════════════════════════
+   UI TRANSITIONS
+══════════════════════════════════════════ */
+function showApp() {
+  document.getElementById('welcome').classList.add('hidden');
+  const app = document.getElementById('app');
+  app.classList.add('visible');
 }
 
-async function pollStatus() {
+function showWelcome() {
+  stopPolling();
+  _scanning = false; _scanDone = false;
+  _allPdfs = []; _folderMap = new Map();
+  _curFolder = null; _curFiles = []; _selectedIdxs = new Set();
+
+  document.getElementById('app').classList.remove('visible');
+  const w = document.getElementById('welcome');
+  w.classList.remove('hidden');
+  renderRecent();
+  setTimeout(() => document.getElementById('hero-url').focus(), 50);
+}
+
+function setPulseDot(state) {
+  document.getElementById('pulse-dot').className = 'pulse-dot ' + state;
+}
+function setStatusText(msg) {
+  document.getElementById('status-text').textContent = msg;
+}
+function setProgressBar(pct, indeterminate) {
+  const bar = document.getElementById('progress-bar');
+  if (indeterminate) {
+    bar.classList.add('indeterminate');
+    bar.style.width = '';
+  } else {
+    bar.classList.remove('indeterminate');
+    bar.style.width = pct + '%';
+  }
+}
+function updateStats(pages, pdfs) {
+  document.getElementById('pages-count').textContent   = pages;
+  document.getElementById('pdf-count').textContent     = pdfs;
+  document.getElementById('footer-pdf-count').textContent = pdfs;
+}
+
+/* ══════════════════════════════════════════
+   FOLDERS
+══════════════════════════════════════════ */
+function rebuildFolders() {
+  _folderMap = groupByFolder(_allPdfs);
+  if (!_curFolder && _folderMap.size > 0) {
+    _curFolder = _folderMap.keys().next().value;
+  }
+  renderFolders();
+  renderFileArea();
+}
+
+function renderFolders() {
+  const query        = (document.getElementById('folder-search').value || '').toLowerCase();
+  const list         = document.getElementById('folder-list');
+  const badge        = document.getElementById('folder-count-badge');
+  const footFolders  = document.getElementById('footer-folder-count');
+  const n            = _folderMap.size;
+
+  badge.textContent      = n;
+  footFolders.textContent = n + ' folder' + (n !== 1 ? 's' : '');
+
+  if (n === 0) { list.innerHTML = ''; return; }
+
+  const entries = [..._folderMap.entries()].filter(([folder]) =>
+    !query || folder.toLowerCase().includes(query)
+  );
+
+  list.innerHTML = entries.map(([folder, pdfs]) => {
+    const { main, sub } = folderParts(folder);
+    const active = folder === _curFolder ? 'active' : '';
+    return `<div class="folder-item ${active}" data-folder="${esc(folder)}" role="button" tabindex="0"
+         aria-label="${esc(main)}, ${pdfs.length} file${pdfs.length !== 1 ? 's' : ''}" aria-pressed="${active ? 'true' : 'false'}">
+      <svg class="folder-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+      </svg>
+      <div class="folder-info">
+        <div class="folder-name">${esc(main)}</div>
+        ${sub ? `<div class="folder-sub">${esc(sub)}</div>` : ''}
+      </div>
+      <div class="folder-badge">${pdfs.length}</div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.folder-item').forEach(item => {
+    item.addEventListener('click', () => selectFolder(item.dataset.folder));
+    item.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectFolder(item.dataset.folder); }
+    });
+  });
+}
+
+function selectFolder(folder) {
+  _curFolder    = folder;
+  _selectedIdxs = new Set();
+  renderFolders();
+  renderFileArea();
+  updateToolbarButtons();
+}
+
+/* ══════════════════════════════════════════
+   FILE AREA
+══════════════════════════════════════════ */
+function renderFileArea() {
+  const area = document.getElementById('file-area');
+
+  if (!_allPdfs.length) {
+    if (_scanning) {
+      area.innerHTML = `<div class="scan-waiting">
+        <div class="scan-waiting-spinner" aria-hidden="true"></div>
+        <div style="color:var(--tx2);font-size:14px;font-weight:600;">Scanning…</div>
+        <div style="color:var(--tx3);font-size:13px;">PDFs will appear as they're discovered</div>
+      </div>`;
+    } else {
+      area.innerHTML = `<div class="empty-state">
+        <div class="empty-icon" aria-hidden="true">📂</div>
+        <div class="empty-title">No PDFs yet</div>
+        <div class="empty-sub">Start a scan to find PDFs on any website</div>
+      </div>`;
+    }
+    updateAllCheckbox();
+    updateToolbarButtons();
+    return;
+  }
+
+  if (!_curFolder) {
+    area.innerHTML = `<div class="empty-state">
+      <div class="empty-icon" aria-hidden="true">📁</div>
+      <div class="empty-title">Select a folder</div>
+      <div class="empty-sub">Choose a folder from the sidebar to browse its files</div>
+    </div>`;
+    updateAllCheckbox();
+    updateToolbarButtons();
+    return;
+  }
+
+  const folderPdfs = _folderMap.get(_curFolder) || [];
+  const filterRaw  = document.getElementById('file-filter').value || '';
+  const filterObj  = parseFileFilter(filterRaw);
+
+  _curFiles = filterRaw.trim()
+    ? folderPdfs.filter(p => fileMatchesFilter(p.name || p.raw_name, filterObj))
+    : folderPdfs;
+
+  // Breadcrumb
+  const { main, sub } = folderParts(_curFolder);
+  const bc = document.getElementById('breadcrumb');
+  bc.innerHTML = sub
+    ? `<span class="breadcrumb-parent">${esc(sub)}</span><span class="breadcrumb-sep" aria-hidden="true">/</span><span class="breadcrumb-name">${esc(main)}</span>`
+    : `<span class="breadcrumb-name">${esc(main)}</span>`;
+
+  if (!_curFiles.length) {
+    area.innerHTML = `<div class="empty-state">
+      <div class="empty-icon" aria-hidden="true">🔍</div>
+      <div class="empty-title">No files match</div>
+      <div class="empty-sub">Try adjusting the filter</div>
+    </div>`;
+    updateAllCheckbox();
+    updateToolbarButtons();
+    return;
+  }
+
+  const rows = _curFiles.map((pdf, i) => {
+    const name     = esc(pdf.name || pdf.raw_name);
+    const selected = _selectedIdxs.has(i) ? 'selected' : '';
+    const checked  = _selectedIdxs.has(i) ? 'checked' : '';
+    return `<div class="file-row ${selected}" data-idx="${i}" role="row">
+      <input type="checkbox" aria-label="Select ${name}" data-idx="${i}" ${checked}>
+      <span class="file-row-icon" aria-hidden="true">📄</span>
+      <span class="file-row-name" title="${name}">${name}</span>
+      <div class="file-row-actions" aria-hidden="true">
+        <button class="row-action-btn" data-action="open" data-idx="${i}" aria-label="Open ${name}">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          Open
+        </button>
+        <button class="row-action-btn" data-action="dl" data-idx="${i}" aria-label="Download ${name}">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          ⬇
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  area.innerHTML = `<div class="file-list" id="file-list" role="table" aria-label="PDF files">${rows}</div>`;
+
+  // Events via delegation
+  const fileList = document.getElementById('file-list');
+  fileList.addEventListener('change', e => {
+    const cb = e.target.closest('input[type="checkbox"][data-idx]');
+    if (cb) onFileCheck(parseInt(cb.dataset.idx, 10), cb.checked);
+  });
+  fileList.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.idx, 10);
+    const pdf = _curFiles[idx];
+    if (!pdf) return;
+    if (btn.dataset.action === 'open') {
+      window.open(pdf.url, '_blank', 'noopener,noreferrer');
+    } else if (btn.dataset.action === 'dl') {
+      const a = document.createElement('a');
+      a.href     = `/download?url=${encodeURIComponent(pdf.url)}&name=${encodeURIComponent(pdf.name || pdf.raw_name)}`;
+      a.download = pdf.name || pdf.raw_name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+  });
+
+  updateAllCheckbox();
+  updateToolbarButtons();
+}
+
+function onFileCheck(idx, checked) {
+  if (checked) _selectedIdxs.add(idx);
+  else         _selectedIdxs.delete(idx);
+
+  const row = document.querySelector(`.file-row[data-idx="${idx}"]`);
+  if (row) row.classList.toggle('selected', checked);
+
+  updateAllCheckbox();
+  updateToolbarButtons();
+}
+
+function updateAllCheckbox() {
+  const cb    = document.getElementById('all-checkbox');
+  if (!cb) return;
+  const total = _curFiles.length;
+  const sel   = _selectedIdxs.size;
+  cb.indeterminate = false;
+  if (total === 0 || sel === 0) {
+    cb.checked = false;
+  } else if (sel === total) {
+    cb.checked = true;
+  } else {
+    cb.checked = false;
+    cb.indeterminate = true;
+  }
+}
+
+function updateToolbarButtons() {
+  const n       = _selectedIdxs.size;
+  const hasPdfs = _allPdfs.length > 0;
+  const hasFold = !!_curFolder && (_folderMap.get(_curFolder) || []).length > 0;
+
+  document.getElementById('dl-selected-btn').disabled  = n === 0;
+  document.getElementById('dl-folder-btn').disabled    = !hasFold;
+  document.getElementById('dl-all-btn').disabled       = !hasPdfs;
+  document.getElementById('copy-links-btn').disabled   = !hasFold;
+  document.getElementById('dl-selected-label').textContent = n > 0 ? `Selected (${n})` : 'Selected';
+}
+
+/* ══════════════════════════════════════════
+   TOOLBAR ACTIONS
+══════════════════════════════════════════ */
+document.getElementById('all-checkbox').addEventListener('change', function() {
+  const fileList = document.getElementById('file-list');
+  if (this.checked) {
+    _curFiles.forEach((_, i) => _selectedIdxs.add(i));
+  } else {
+    _selectedIdxs.clear();
+  }
+  if (fileList) {
+    fileList.querySelectorAll('.file-row').forEach(row => {
+      const idx = parseInt(row.dataset.idx, 10);
+      const sel = _selectedIdxs.has(idx);
+      row.classList.toggle('selected', sel);
+      const cb = row.querySelector('input[type="checkbox"]');
+      if (cb) cb.checked = sel;
+    });
+  }
+  updateToolbarButtons();
+});
+
+document.getElementById('dl-folder-btn').addEventListener('click', () => {
+  if (!_curFolder) return;
+  const pdfs = _folderMap.get(_curFolder) || [];
+  const { main } = folderParts(_curFolder);
+  triggerZip(pdfs, main + '.zip');
+});
+
+document.getElementById('dl-selected-btn').addEventListener('click', () => {
+  if (!_selectedIdxs.size) return;
+  const pdfs = [..._selectedIdxs].map(i => _curFiles[i]);
+  triggerZip(pdfs, 'selected.zip');
+});
+
+document.getElementById('dl-all-btn').addEventListener('click', () => {
+  triggerZip(_allPdfs, 'pdf_hunter_all.zip');
+});
+
+document.getElementById('copy-links-btn').addEventListener('click', async () => {
+  const pdfs = _curFolder ? (_folderMap.get(_curFolder) || []) : _allPdfs;
+  const text = pdfs.map(p => p.url).join('\n');
   try {
-    const r = await fetch(`${API}/status?since=${lastLogTime}`);
-    const data = await r.json();
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById('copy-links-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => {
+      btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy links`;
+    }, 1800);
+  } catch {
+    alert('Could not access clipboard');
+  }
+});
 
-    document.getElementById('s-pages').textContent = data.pages_checked;
-    document.getElementById('s-pdfs').textContent = data.pdf_count;
+/* ══════════════════════════════════════════
+   HEADER EVENTS
+══════════════════════════════════════════ */
+document.getElementById('header-stop-btn').addEventListener('click', stopScan);
+document.getElementById('header-new-btn').addEventListener('click', showWelcome);
+document.getElementById('new-scan-logo').addEventListener('click', e => { e.preventDefault(); showWelcome(); });
+document.getElementById('header-url').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const url = e.target.value.trim();
+    if (url) startScan(url);
+  }
+});
 
-    if (!data.done) {
-      document.getElementById('prog-bar').style.width = Math.min(5 + data.pages_checked * 1.5, 88) + '%';
+/* ══════════════════════════════════════════
+   WELCOME EVENTS
+══════════════════════════════════════════ */
+document.getElementById('hero-scan-btn').addEventListener('click', () => {
+  const url = document.getElementById('hero-url').value.trim();
+  if (url) startScan(url);
+});
+document.getElementById('hero-url').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const url = e.target.value.trim();
+    if (url) startScan(url);
+  }
+});
+
+/* ══════════════════════════════════════════
+   SIDEBAR SEARCH
+══════════════════════════════════════════ */
+document.getElementById('folder-search').addEventListener('input', renderFolders);
+
+/* ══════════════════════════════════════════
+   FILE FILTER
+══════════════════════════════════════════ */
+document.getElementById('file-filter').addEventListener('input', () => {
+  _selectedIdxs = new Set();
+  renderFileArea();
+});
+
+/* ══════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+══════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (_scanning) { stopScan(); return; }
+    if (document.getElementById('app').classList.contains('visible')) showWelcome();
+  }
+});
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+renderRecent();
+
+// Resume an in-progress scan if the page is refreshed mid-scan
+(async () => {
+  try {
+    const res  = await fetch('/status?since=0');
+    const data = await res.json();
+    if (data.running) {
+      _allPdfs  = data.pdfs || [];
+      _scanning = true;
+      const startLog = (data.logs || []).find(l => l.msg && l.msg.startsWith('Starting scan:'));
+      const url      = startLog ? startLog.msg.replace('Starting scan: ', '').trim() : '';
+      document.getElementById('header-url').value = url;
+      showApp();
+      setStatusText('Scan in progress…');
+      setPulseDot('running');
+      setProgressBar(0, true);
+      updateStats(data.pages_checked || 0, data.pdf_count || 0);
+      document.getElementById('header-stop-btn').disabled = false;
+      rebuildFolders();
+      startPolling();
     }
-
-    if (data.logs.length) {
-      lastLogTime = Math.max(lastLogTime, ...data.logs.map(l => l.t));
-      document.getElementById('sbar-peek').textContent = data.logs[data.logs.length - 1].msg;
-    }
-
-    if (data.pdfs.length !== allPDFs.length) {
-      allPDFs = data.pdfs;
-      renderSidebar();
-      if (!currentFolder && allPDFs.length) {
-        const first = [...groupByFolder(allPDFs).keys()][0];
-        currentFolder = first;
-        renderSidebar();
-        renderFiles();
-      } else {
-        renderFiles();
-      }
-    }
-
-    if (data.done) {
-      clearInterval(polling); polling = null;
-      resetScanBtn();
-      document.getElementById('prog-bar').className = 'prog-bar done';
-      document.getElementById('sbar-dot').className = 'sbar-dot done';
-      document.getElementById('sbar-text').textContent =
-        `Done — ${data.pdf_count} PDFs across ${groupByFolder(allPDFs).size} folders`;
-      document.getElementById('sbar-peek').textContent = '';
-      allPDFs = data.pdfs;
-      renderSidebar(); renderFiles();
-    }
-  } catch {}
-}
+  } catch { /* server not ready yet */ }
+})();
 </script>
 </body>
 </html>
