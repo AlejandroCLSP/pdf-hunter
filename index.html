@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Hunter</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #080c10;
+  --surface: #0d1117;
+  --surface2: #161b22;
+  --border: #21262d;
+  --border2: #30363d;
+  --accent: #f0883e;
+  --accent2: #58a6ff;
+  --green: #3fb950;
+  --red: #f85149;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --dim: #484f58;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Noise texture overlay */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Scanline effect */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+}
+
+.wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+  position: relative; z-index: 1;
+}
+
+/* Header */
+header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 52px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 28px;
+}
+
+.logo-block {}
+.logo-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo-tag::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+h1 {
+  font-size: 3.2rem;
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -2px;
+  color: var(--text);
+}
+h1 span { color: var(--accent); }
+
+.header-meta {
+  text-align: right;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.8;
+}
+
+/* Control panel */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.panel-header {
+  padding: 14px 20px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+.panel-body { padding: 20px; }
+
+.url-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+input[type="url"] {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 13px 16px;
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input[type="url"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(240,136,62,0.12);
+}
+input[type="url"]::placeholder { color: var(--dim); }
+
+.btn {
+  padding: 13px 22px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  transition: all 0.15s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-scan {
+  background: var(--accent);
+  color: #000;
+  min-width: 120px;
+  justify-content: center;
+}
+.btn-scan:hover:not(:disabled) { background: #ff9f56; transform: translateY(-1px); }
+.btn-scan:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.btn-stop {
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
+}
+.btn-stop:hover { background: rgba(248,81,73,0.1); }
+
+.btn-dl-all {
+  background: transparent;
+  border: 1px solid var(--green);
+  color: var(--green);
+  font-size: 13px;
+  padding: 9px 18px;
+}
+.btn-dl-all:hover { background: rgba(63,185,80,0.1); }
+
+.btn-copy {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-size: 13px;
+  padding: 9px 18px;
+}
+.btn-copy:hover { color: var(--text); border-color: var(--muted); }
+
+.btn-dl-sel {
+  background: transparent;
+  border: 1px solid var(--accent2);
+  color: var(--accent2);
+  font-size: 13px;
+  padding: 9px 18px;
+}
+.btn-dl-sel:hover { background: rgba(88,166,255,0.1); }
+.btn-dl-sel:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.options-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.opt-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.opt-label:hover { color: var(--text); }
+
+input[type="checkbox"] {
+  appearance: none;
+  width: 15px; height: 15px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: -2px; left: 1px;
+  font-size: 11px;
+  color: #000;
+  font-weight: 700;
+}
+
+select {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  outline: none;
+  cursor: pointer;
+}
+
+.divider {
+  width: 1px; height: 16px;
+  background: var(--border2);
+}
+
+/* Status panel */
+#status-panel { display: none; }
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.stat {
+  background: var(--surface2);
+  padding: 14px 16px;
+  text-align: center;
+}
+.stat-val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--accent);
+  display: block;
+  line-height: 1;
+  margin-bottom: 4px;
+  transition: all 0.2s;
+}
+.stat-val.green { color: var(--green); }
+.stat-label {
+  font-size: 10px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.progress-track {
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #ff6b35);
+  border-radius: 1px;
+  width: 0%;
+  transition: width 0.4s ease;
+}
+.progress-bar.done { background: var(--green); width: 100% !important; }
+
+.terminal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  height: 160px;
+  overflow-y: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  line-height: 1.9;
+}
+.terminal::-webkit-scrollbar { width: 3px; }
+.terminal::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.log-line { color: var(--dim); }
+.log-line.info { color: var(--accent2); }
+.log-line.success { color: var(--green); }
+.log-line.error { color: var(--red); }
+
+/* Results */
+#results-panel { display: none; }
+
+.results-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.results-count {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: var(--muted);
+}
+.results-count strong { color: var(--green); font-size: 18px; }
+
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Filter bar */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+input[type="text"].filter-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  outline: none;
+}
+input[type="text"].filter-input:focus { border-color: var(--accent2); }
+input[type="text"].filter-input::placeholder { color: var(--dim); }
+
+/* PDF list */
+.pdf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.pdf-list::-webkit-scrollbar { width: 3px; }
+.pdf-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.pdf-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all 0.12s;
+  animation: slideIn 0.2s ease both;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.pdf-row:hover { background: var(--surface2); border-color: var(--border); }
+
+.pdf-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.pdf-info { flex: 1; min-width: 0; }
+.pdf-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+.pdf-path {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.pdf-btns { display: flex; gap: 4px; flex-shrink: 0; }
+
+.btn-sm {
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-family: 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.btn-sm:hover { color: var(--text); border-color: var(--muted); background: var(--surface2); }
+.btn-sm.dl { border-color: rgba(63,185,80,0.4); color: var(--green); }
+.btn-sm.dl:hover { background: rgba(63,185,80,0.1); }
+
+.empty { text-align: center; padding: 40px; color: var(--dim); font-size: 14px; line-height: 1.6; }
+
+/* Spinner */
+.spin {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin 0.5s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 12px 18px;
+  font-size: 13px;
+  color: var(--text);
+  z-index: 9999;
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.25s;
+  font-family: 'IBM Plex Mono', monospace;
+  pointer-events: none;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo-block">
+      <div class="logo-tag">PDF Hunter — Server Mode</div>
+      <h1>GRAB<br>EVERY<br><span>PDF.</span></h1>
+    </div>
+    <div class="header-meta">
+      v2.0 — server mode<br>
+      runs locally<br>
+      no CORS limits<br>
+      any website
+    </div>
+  </header>
+
+  <!-- Scan Panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="dot"></div>
+      Target URL
+    </div>
+    <div class="panel-body">
+      <div class="url-row">
+        <input type="url" id="url-input" placeholder="https://example.com/revision" autocomplete="off" />
+        <button class="btn btn-scan" id="scan-btn" onclick="startScan()">
+          <span id="btn-label">Scan</span>
+        </button>
+        <button class="btn btn-stop" id="stop-btn" onclick="stopScan()" style="display:none">Stop</button>
+      </div>
+      <div class="options-row">
+        <label class="opt-label" title="Only crawl pages under the same URL path — prevents drifting into unrelated site sections">
+          <input type="checkbox" id="strict-path" checked>
+          🔒 Path lock
+        </label>
+        <div class="divider"></div>
+        <label class="opt-label">
+          <input type="checkbox" id="same-domain" checked>
+          Same domain
+        </label>
+        <div class="divider"></div>
+        <label class="opt-label">
+          Depth:
+          <select id="depth">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5 (slow)</option>
+          </select>
+        </label>
+        <div class="divider"></div>
+        <label class="opt-label" style="color:var(--dim);font-size:12px">
+          🟢 Server :7734
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status Panel -->
+  <div class="panel" id="status-panel">
+    <div class="panel-header">
+      <div class="dot" id="status-dot"></div>
+      <span id="status-label">Scanning...</span>
+    </div>
+    <div class="panel-body">
+      <div class="stats-row">
+        <div class="stat">
+          <span class="stat-val" id="stat-pages">0</span>
+          <span class="stat-label">Pages Checked</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val green" id="stat-pdfs">0</span>
+          <span class="stat-label">PDFs Found</span>
+        </div>
+        <div class="stat">
+          <span class="stat-val" id="stat-queue">—</span>
+          <span class="stat-label">Status</span>
+        </div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-bar" id="prog-bar"></div>
+      </div>
+      <div class="terminal" id="terminal"></div>
+    </div>
+  </div>
+
+  <!-- Results Panel -->
+  <div class="panel" id="results-panel">
+    <div class="panel-header">
+      <div class="dot" style="background:var(--green)"></div>
+      Results
+    </div>
+    <div class="panel-body">
+      <div class="results-toolbar">
+        <div class="results-count">Found <strong id="res-count">0</strong> PDFs</div>
+        <div class="btn-group">
+          <button class="btn btn-dl-all" onclick="downloadAll()">⬇ Download All</button>
+          <button class="btn btn-dl-sel" id="dl-sel-btn" onclick="downloadSelected()" disabled>⬇ Selected (<span id="sel-count">0</span>)</button>
+          <button class="btn btn-copy" onclick="copyLinks()">📋 Copy Links</button>
+        </div>
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);margin-bottom:8px;display:flex;gap:16px;flex-wrap:wrap">
+        <span><span style="color:var(--accent2)">word</span> — include</span>
+        <span><span style="color:var(--red)">-word</span> — exclude</span>
+        <span style="color:var(--dim)">e.g. <span style="color:var(--muted)">paper-1 qp -specimen</span></span>
+      </div>
+      <div class="filter-bar">
+        <input type="text" class="filter-input" id="filter-input" placeholder="Filter by name..." oninput="filterList()" />
+        <label class="opt-label" style="white-space:nowrap;padding:0 4px" title="Select all visible (filtered) PDFs">
+          <input type="checkbox" id="select-all-cb" onchange="toggleSelectAll(this.checked)">
+          Select all
+        </label>
+      </div>
+      <div class="pdf-list" id="pdf-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://localhost:7734';
+let polling = null;
+let lastLogTime = 0;
+let allPDFs = [];
+let scanRunning = false;
+let dlQueue = [];
+let dlActive = false;
+let selectedURLs = new Set();
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+async function startScan() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) { toast('Enter a URL first'); return; }
+
+  const depth = parseInt(document.getElementById('depth').value);
+  const same_domain = document.getElementById('same-domain').checked;
+  const strict_path = document.getElementById('strict-path').checked;
+
+  // Reset UI
+  allPDFs = [];
+  selectedURLs = new Set();
+  updateSelCount();
+  lastLogTime = 0;
+  document.getElementById('terminal').innerHTML = '';
+  document.getElementById('pdf-list').innerHTML = '';
+  document.getElementById('res-count').textContent = '0';
+  document.getElementById('stat-pages').textContent = '0';
+  document.getElementById('stat-pdfs').textContent = '0';
+  document.getElementById('stat-queue').textContent = 'Running';
+  document.getElementById('status-panel').style.display = 'block';
+  document.getElementById('results-panel').style.display = 'none';
+  document.getElementById('prog-bar').classList.remove('done');
+  document.getElementById('prog-bar').style.width = '5%';
+  document.getElementById('status-label').textContent = 'Scanning...';
+  document.getElementById('status-dot').style.animation = 'pulse 1s infinite';
+  document.getElementById('scan-btn').disabled = true;
+  document.getElementById('scan-btn').querySelector('#btn-label').innerHTML = '<span class="spin"></span>';
+  document.getElementById('stop-btn').style.display = 'inline-flex';
+
+  try {
+    const r = await fetch(`${API}/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, depth, same_domain, strict_path })
+    });
+    if (!r.ok) {
+      const err = await r.json();
+      toast('Error: ' + err.error);
+      resetBtn();
+      return;
+    }
+    scanRunning = true;
+    polling = setInterval(pollStatus, 600);
+  } catch(e) {
+    toast('Cannot reach server. Is server.py running?');
+    resetBtn();
+  }
+}
+
+async function stopScan() {
+  await fetch(`${API}/stop`).catch(() => {});
+}
+
+function resetBtn() {
+  document.getElementById('scan-btn').disabled = false;
+  document.getElementById('btn-label').textContent = 'Scan';
+  document.getElementById('stop-btn').style.display = 'none';
+  scanRunning = false;
+}
+
+async function pollStatus() {
+  try {
+    const r = await fetch(`${API}/status?since=${lastLogTime}`);
+    const data = await r.json();
+
+    // Update stats
+    document.getElementById('stat-pages').textContent = data.pages_checked;
+    document.getElementById('stat-pdfs').textContent = data.pdf_count;
+
+    // Update progress bar (rough estimate)
+    if (!data.done) {
+      const pct = Math.min(5 + data.pages_checked * 1.5, 88);
+      document.getElementById('prog-bar').style.width = pct + '%';
+    }
+
+    // Append new logs
+    const term = document.getElementById('terminal');
+    for (const log of data.logs) {
+      if (log.t > lastLogTime) {
+        lastLogTime = Math.max(lastLogTime, log.t);
+        const line = document.createElement('div');
+        line.className = 'log-line ' + log.level;
+        line.textContent = '> ' + log.msg;
+        term.appendChild(line);
+      }
+    }
+    term.scrollTop = term.scrollHeight;
+
+    // Update PDF list
+    if (data.pdfs.length !== allPDFs.length) {
+      allPDFs = data.pdfs;
+      renderPDFs(allPDFs);
+      if (allPDFs.length > 0) {
+        document.getElementById('results-panel').style.display = 'block';
+        document.getElementById('res-count').textContent = allPDFs.length;
+        document.getElementById('filter-input').value = '';
+      }
+    }
+
+    if (data.done) {
+      clearInterval(polling);
+      polling = null;
+      resetBtn();
+      document.getElementById('prog-bar').classList.add('done');
+      document.getElementById('stat-queue').textContent = 'Done ✓';
+      document.getElementById('status-label').textContent = `Complete — ${data.pdf_count} PDFs found`;
+      document.getElementById('status-dot').style.animation = 'none';
+      document.getElementById('status-dot').style.background = 'var(--green)';
+    }
+  } catch(e) {
+    // Server might be busy, try again next poll
+  }
+}
+
+function updateSelCount() {
+  const n = selectedURLs.size;
+  document.getElementById('sel-count').textContent = n;
+  document.getElementById('dl-sel-btn').disabled = n === 0;
+}
+
+function toggleSelectAll(checked) {
+  const filtered = applyFilter(allPDFs);
+  filtered.forEach(p => checked ? selectedURLs.add(p.url) : selectedURLs.delete(p.url));
+  updateSelCount();
+  renderPDFs(allPDFs);
+}
+
+function onRowCheck(idx, checked) {
+  const pdf = _filteredPDFs[idx];
+  if (!pdf) return;
+  checked ? selectedURLs.add(pdf.url) : selectedURLs.delete(pdf.url);
+  updateSelCount();
+  const filtered = applyFilter(allPDFs);
+  document.getElementById('select-all-cb').checked = filtered.length > 0 && filtered.every(p => selectedURLs.has(p.url));
+}
+
+let _filteredPDFs = [];
+
+function applyFilter(pdfs) {
+  const raw = document.getElementById('filter-input').value.toLowerCase().trim();
+  if (!raw) return pdfs;
+  const terms = raw.split(/\s+/);
+  const include = terms.filter(t => !t.startsWith('-') && t.length > 0);
+  const exclude = terms.filter(t => t.startsWith('-') && t.length > 1).map(t => t.slice(1));
+  return pdfs.filter(p => {
+    const name = p.name.toLowerCase();
+    return include.every(t => name.includes(t)) && !exclude.some(t => name.includes(t));
+  });
+}
+
+function renderPDFs(pdfs) {
+  const filtered = applyFilter(pdfs);
+
+  const selectAllCb = document.getElementById('select-all-cb');
+  selectAllCb.checked = filtered.length > 0 && filtered.every(p => selectedURLs.has(p.url));
+
+  const list = document.getElementById('pdf-list');
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty">No PDFs match your filter.</div>';
+    return;
+  }
+
+  _filteredPDFs = filtered;
+  list.innerHTML = filtered.map((pdf, i) => {
+    const safeName = pdf.name.replace(/"/g, '&quot;');
+    const path = pdf.url.replace(/https?:\/\/[^/]+/, '').split('/').slice(0, -1).join('/') || '/';
+    const checked = selectedURLs.has(pdf.url) ? 'checked' : '';
+    return `
+    <div class="pdf-row" style="animation-delay:${Math.min(i,20)*0.02}s">
+      <input type="checkbox" ${checked} onchange="onRowCheck(${i}, this.checked)" style="flex-shrink:0">
+      <div class="pdf-icon">📄</div>
+      <div class="pdf-info">
+        <div class="pdf-name" title="${safeName}">${safeName}</div>
+        <div class="pdf-path" title="${pdf.url}">${path}</div>
+      </div>
+      <div class="pdf-btns">
+        <a class="btn-sm" href="${pdf.url}" target="_blank" rel="noopener">Open</a>
+        <button class="btn-sm dl" onclick="triggerZip([_filteredPDFs[${i}]], _filteredPDFs[${i}].name.replace(/\.pdf$/i,'') + '.zip')">⬇</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterList() {
+  renderPDFs(allPDFs);
+}
+
+function triggerZip(pdfs, filename) {
+  const urls = pdfs.map(p => p.url).join('|');
+  const names = pdfs.map(p => p.name).join('|');
+  const a = document.createElement('a');
+  a.href = `${API}/zip?urls=${encodeURIComponent(urls)}&names=${encodeURIComponent(names)}`;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+async function downloadSelected() {
+  const sel = allPDFs.filter(p => selectedURLs.has(p.url));
+  if (!sel.length) return;
+  toast(`Zipping ${sel.length} PDFs… this may take a moment`);
+  triggerZip(sel, 'selected_pdfs.zip');
+}
+
+async function downloadAll() {
+  if (!allPDFs.length) return;
+  toast(`Zipping ${allPDFs.length} PDFs… this may take a moment`);
+  triggerZip(allPDFs, 'all_pdfs.zip');
+}
+
+function copyLinks() {
+  const text = allPDFs.map(p => p.url).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    toast(`Copied ${allPDFs.length} links ✓`);
+  });
+}
+</script>
+</body>
+</html>
