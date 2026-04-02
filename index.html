@@ -866,7 +866,7 @@ function renderPDFs(pdfs) {
     const someSel = group.pdfs.some(p => selectedURLs.has(p.url));
     const parts = group.folder === '/' ? ['root'] : group.folder.split('/').filter(Boolean);
     const folderLabel = parts.length > 1
-      ? `<span style="color:var(--dim)">${parts.slice(0,-1).join(' / ')} / </span><strong>${parts[parts.length-1]}</strong>`
+      ? `<span style="color:var(--dim)">${parts[parts.length-2]} / </span><strong>${parts[parts.length-1]}</strong>`
       : `<strong>${parts[0]}</strong>`;
 
     html += `<div class="folder-section">
