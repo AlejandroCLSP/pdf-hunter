@@ -162,7 +162,19 @@ def resolve_display_names(pdfs):
                 pdf['name'] = make_name(pdf, n_parents)
 
 
-def do_scan(start_url, max_depth, same_domain, strict_path):
+def parse_filter(raw):
+    terms = raw.lower().split()
+    include = [t for t in terms if not t.startswith('-') and t]
+    exclude = [t[1:] for t in terms if t.startswith('-') and len(t) > 1]
+    return include, exclude
+
+
+def name_matches_filter(name, include, exclude):
+    n = name.lower()
+    return all(t in n for t in include) and not any(t in n for t in exclude)
+
+
+def do_scan(start_url, max_depth, same_domain, strict_path, name_filter=''):
     reset_state()
     log(f'Starting scan: {start_url}', 'info')
 
@@ -181,6 +193,10 @@ def do_scan(start_url, max_depth, same_domain, strict_path):
         log(f'Path lock ON — only crawling under: {start_path}/', 'info')
     else:
         log(f'Crawling full domain: {base_domain}', 'info')
+
+    include_terms, exclude_terms = parse_filter(name_filter)
+    if include_terms or exclude_terms:
+        log(f'Pre-filter active: {name_filter}', 'info')
 
     found_pdfs = set()
     visited = set()
@@ -206,6 +222,10 @@ def do_scan(start_url, max_depth, same_domain, strict_path):
             if url not in found_pdfs:
                 found_pdfs.add(url)
                 raw_name = urllib.parse.unquote(url.split('?')[0].rstrip('/').split('/')[-1])
+                if include_terms or exclude_terms:
+                    if not name_matches_filter(raw_name, include_terms, exclude_terms):
+                        log(f'Skipped (filter): {raw_name}')
+                        continue
                 with scan_lock:
                     scan_state['pdfs'].append({'url': url, 'raw_name': raw_name, 'name': raw_name})
                     resolve_display_names(scan_state['pdfs'])
@@ -395,6 +415,7 @@ class Handler(BaseHTTPRequestHandler):
             max_depth = int(body.get('depth', 2))
             same_domain = bool(body.get('same_domain', True))
             strict_path = bool(body.get('strict_path', True))
+            name_filter = body.get('name_filter', '').strip()
 
             if not url:
                 self.send_json({'error': 'No URL provided'}, 400)
@@ -403,7 +424,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({'error': 'Scan already running'}, 409)
                 return
 
-            t = threading.Thread(target=do_scan, args=(url, max_depth, same_domain, strict_path), daemon=True)
+            t = threading.Thread(target=do_scan, args=(url, max_depth, same_domain, strict_path, name_filter), daemon=True)
             t.start()
             self.send_json({'ok': True})
         else:

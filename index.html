@@ -559,6 +559,13 @@ input[type="text"].filter-input::placeholder { color: var(--dim); }
           🟢 Server :7734
         </label>
       </div>
+      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);margin-bottom:6px;display:flex;gap:16px">
+          <span>Pre-scan filter — only collect matching PDFs</span>
+          <span><span style="color:var(--accent2)">word</span> include &nbsp; <span style="color:var(--red)">-word</span> exclude</span>
+        </div>
+        <input type="text" class="filter-input" id="prescan-filter" placeholder="e.g. notes qp -specimen" />
+      </div>
     </div>
   </div>
 
@@ -649,6 +656,7 @@ async function startScan() {
   const depth = parseInt(document.getElementById('depth').value);
   const same_domain = document.getElementById('same-domain').checked;
   const strict_path = document.getElementById('strict-path').checked;
+  const name_filter = document.getElementById('prescan-filter').value.trim();
 
   // Reset UI
   allPDFs = [];
@@ -675,7 +683,7 @@ async function startScan() {
     const r = await fetch(`${API}/scan`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, depth, same_domain, strict_path })
+      body: JSON.stringify({ url, depth, same_domain, strict_path, name_filter })
     });
     if (!r.ok) {
       const err = await r.json();
