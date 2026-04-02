@@ -851,6 +851,44 @@ main {
   animation: spin 0.75s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Global search ── */
+#global-search-bar {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: var(--s2);
+  border-bottom: 1px solid var(--b1);
+}
+.gsb-inner {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--b2);
+  border-radius: 8px;
+  padding: 0 10px;
+  transition: border-color 0.2s;
+}
+.gsb-inner:focus-within { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-d); }
+.gsb-icon { color: var(--tx3); flex-shrink: 0; }
+.gsb-input {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--tx1); font-size: 13px; padding: 8px 0;
+  font-family: var(--sans);
+}
+.gsb-input::placeholder { color: var(--tx3); }
+.gsb-count { font-size: 11px; color: var(--tx3); white-space: nowrap; flex-shrink: 0; font-family: var(--mono); }
+.gsb-clear {
+  background: none; border: none; cursor: pointer;
+  color: var(--tx3); font-size: 16px; line-height: 1;
+  padding: 2px 4px; border-radius: 4px; flex-shrink: 0;
+  transition: color 0.15s;
+}
+.gsb-clear:hover { color: var(--tx1); }
+
+/* ── Filter count ── */
+.filter-count-badge {
+  font-size: 11px; color: var(--tx3); white-space: nowrap;
+  flex-shrink: 0; font-family: var(--mono);
+}
 </style>
 </head>
 <body>
@@ -997,6 +1035,15 @@ main {
     </div>
   </div>
 
+  <div id="global-search-bar">
+    <div class="gsb-inner">
+      <svg class="gsb-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="global-search" class="gsb-input" placeholder="Search all PDFs across all folders…" aria-label="Search all PDFs" autocomplete="off" spellcheck="false">
+      <span id="gsb-count" class="gsb-count" aria-live="polite"></span>
+      <button id="gsb-clear" class="gsb-clear" aria-label="Clear search" style="display:none">×</button>
+    </div>
+  </div>
+
   <!-- Two-panel layout -->
   <div id="panels">
 
@@ -1040,6 +1087,7 @@ main {
           placeholder="Filter… (word -word)"
           aria-label="Filter files — use -word to exclude"
         >
+        <span id="filter-count-badge" class="filter-count-badge" style="display:none"></span>
 
         <div class="all-checkbox-wrap">
           <input type="checkbox" id="all-checkbox" aria-label="Select all files in folder">
@@ -1103,7 +1151,8 @@ let _allPdfs      = [];
 let _folderMap    = new Map();
 let _curFolder    = null;
 let _curFiles     = [];
-let _selectedIdxs = new Set();
+let _selectedUrls = new Set(); // URL-keyed, persists across folder switches
+let _globalSearch = '';
 let _scanning     = false;
 let _scanDone     = false;
 let _pollTimer    = null;
@@ -1242,7 +1291,7 @@ async function startScan(url) {
   _folderMap    = new Map();
   _curFolder    = null;
   _curFiles     = [];
-  _selectedIdxs = new Set();
+  _selectedUrls = new Set();
   _scanning     = true;
   _scanDone     = false;
   _lastT        = 0;
@@ -1351,7 +1400,7 @@ function showWelcome() {
   stopPolling();
   _scanning = false; _scanDone = false;
   _allPdfs = []; _folderMap = new Map();
-  _curFolder = null; _curFiles = []; _selectedIdxs = new Set();
+  _curFolder = null; _curFiles = []; _selectedUrls = new Set();
 
   document.getElementById('app').classList.remove('visible');
   const w = document.getElementById('welcome');
@@ -1436,7 +1485,6 @@ function renderFolders() {
 
 function selectFolder(folder) {
   _curFolder    = folder;
-  _selectedIdxs = new Set();
   renderFolders();
   renderFileArea();
   updateToolbarButtons();
@@ -1445,8 +1493,83 @@ function selectFolder(folder) {
 /* ══════════════════════════════════════════
    FILE AREA
 ══════════════════════════════════════════ */
+function getGlobalResults() {
+  const q = _globalSearch.toLowerCase().trim();
+  if (!q) return null;
+  const { include, exclude } = parseFileFilter(q);
+  return _allPdfs.filter(p => fileMatchesFilter(p.name || p.raw_name, { include, exclude }));
+}
+
+function renderGlobalResults(pdfs) {
+  const area = document.getElementById('file-area');
+  document.getElementById('gsb-count').textContent = pdfs.length + ' result' + (pdfs.length !== 1 ? 's' : '');
+
+  if (!pdfs.length) {
+    area.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">No results</div>
+      <div class="empty-sub">Try different keywords</div>
+    </div>`;
+    return;
+  }
+
+  // Build flat _curFiles for index-based actions
+  _curFiles = pdfs;
+
+  const rows = pdfs.map((pdf, i) => {
+    const name     = esc(pdf.name || pdf.raw_name);
+    const folder   = getFolderPath(pdf.url);
+    const { main } = folderParts(folder);
+    const selected = _selectedUrls.has(pdf.url) ? 'selected' : '';
+    const checked  = _selectedUrls.has(pdf.url) ? 'checked' : '';
+    return `<div class="file-row ${selected}" data-idx="${i}" role="row">
+      <input type="checkbox" aria-label="Select ${name}" data-idx="${i}" ${checked}>
+      <span class="file-row-icon" aria-hidden="true">📄</span>
+      <div style="flex:1;min-width:0;">
+        <div class="file-row-name" title="${name}">${name}</div>
+        <div style="font-size:10px;color:var(--tx3);font-family:var(--mono);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(main)}</div>
+      </div>
+      <div class="file-row-actions" aria-hidden="true">
+        <button class="row-action-btn" data-action="open" data-idx="${i}" aria-label="Open ${name}">Open</button>
+        <button class="row-action-btn" data-action="dl" data-idx="${i}" aria-label="Download ${name}">⬇</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  area.innerHTML = `<div class="file-list" id="file-list" role="table">${rows}</div>`;
+
+  // Reattach events
+  const fileList = document.getElementById('file-list');
+  fileList.addEventListener('change', e => {
+    const cb = e.target.closest('input[type="checkbox"][data-idx]');
+    if (cb) onFileCheck(parseInt(cb.dataset.idx, 10), cb.checked);
+  });
+  fileList.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.idx, 10);
+    const pdf = _curFiles[idx];
+    if (!pdf) return;
+    if (btn.dataset.action === 'open') window.open(pdf.url, '_blank', 'noopener,noreferrer');
+    else if (btn.dataset.action === 'dl') {
+      const a = document.createElement('a');
+      a.href = `/download?url=${encodeURIComponent(pdf.url)}&name=${encodeURIComponent(pdf.name || pdf.raw_name)}`;
+      a.download = pdf.name || pdf.raw_name;
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+  });
+  updateAllCheckbox();
+  updateToolbarButtons();
+}
+
 function renderFileArea() {
   const area = document.getElementById('file-area');
+
+  const globalResults = getGlobalResults();
+  if (globalResults !== null) {
+    renderGlobalResults(globalResults);
+    return;
+  }
 
   if (!_allPdfs.length) {
     if (_scanning) {
@@ -1486,6 +1609,17 @@ function renderFileArea() {
     ? folderPdfs.filter(p => fileMatchesFilter(p.name || p.raw_name, filterObj))
     : folderPdfs;
 
+  // Filter count badge
+  const fc = document.getElementById('filter-count-badge');
+  if (fc) {
+    if (filterRaw.trim() && folderPdfs.length > 0) {
+      fc.textContent = _curFiles.length + ' / ' + folderPdfs.length;
+      fc.style.display = '';
+    } else {
+      fc.style.display = 'none';
+    }
+  }
+
   // Breadcrumb
   const { main, sub } = folderParts(_curFolder);
   const bc = document.getElementById('breadcrumb');
@@ -1506,8 +1640,8 @@ function renderFileArea() {
 
   const rows = _curFiles.map((pdf, i) => {
     const name     = esc(pdf.name || pdf.raw_name);
-    const selected = _selectedIdxs.has(i) ? 'selected' : '';
-    const checked  = _selectedIdxs.has(i) ? 'checked' : '';
+    const selected = _selectedUrls.has(pdf.url) ? 'selected' : '';
+    const checked  = _selectedUrls.has(pdf.url) ? 'checked' : '';
     return `<div class="file-row ${selected}" data-idx="${i}" role="row">
       <input type="checkbox" aria-label="Select ${name}" data-idx="${i}" ${checked}>
       <span class="file-row-icon" aria-hidden="true">📄</span>
@@ -1562,41 +1696,36 @@ function renderFileArea() {
 }
 
 function onFileCheck(idx, checked) {
-  if (checked) _selectedIdxs.add(idx);
-  else         _selectedIdxs.delete(idx);
-
+  const pdf = _curFiles[idx];
+  if (!pdf) return;
+  if (checked) _selectedUrls.add(pdf.url);
+  else         _selectedUrls.delete(pdf.url);
   const row = document.querySelector(`.file-row[data-idx="${idx}"]`);
   if (row) row.classList.toggle('selected', checked);
-
   updateAllCheckbox();
   updateToolbarButtons();
 }
 
 function updateAllCheckbox() {
-  const cb    = document.getElementById('all-checkbox');
+  const cb = document.getElementById('all-checkbox');
   if (!cb) return;
   const total = _curFiles.length;
-  const sel   = _selectedIdxs.size;
+  const sel   = _curFiles.filter(p => _selectedUrls.has(p.url)).length;
   cb.indeterminate = false;
-  if (total === 0 || sel === 0) {
-    cb.checked = false;
-  } else if (sel === total) {
-    cb.checked = true;
-  } else {
-    cb.checked = false;
-    cb.indeterminate = true;
-  }
+  if (total === 0 || sel === 0)   cb.checked = false;
+  else if (sel === total)         cb.checked = true;
+  else { cb.checked = false; cb.indeterminate = true; }
 }
 
 function updateToolbarButtons() {
-  const n       = _selectedIdxs.size;
+  const n       = _selectedUrls.size;
   const hasPdfs = _allPdfs.length > 0;
   const hasFold = !!_curFolder && (_folderMap.get(_curFolder) || []).length > 0;
 
   document.getElementById('dl-selected-btn').disabled  = n === 0;
   document.getElementById('dl-folder-btn').disabled    = !hasFold;
   document.getElementById('dl-all-btn').disabled       = !hasPdfs;
-  document.getElementById('copy-links-btn').disabled   = !hasFold;
+  document.getElementById('copy-links-btn').disabled   = !hasFold && _selectedUrls.size === 0 && !_allPdfs.length;
   document.getElementById('dl-selected-label').textContent = n > 0 ? `Selected (${n})` : 'Selected';
 }
 
@@ -1606,14 +1735,15 @@ function updateToolbarButtons() {
 document.getElementById('all-checkbox').addEventListener('change', function() {
   const fileList = document.getElementById('file-list');
   if (this.checked) {
-    _curFiles.forEach((_, i) => _selectedIdxs.add(i));
+    _curFiles.forEach(pdf => _selectedUrls.add(pdf.url));
   } else {
-    _selectedIdxs.clear();
+    _curFiles.forEach(pdf => _selectedUrls.delete(pdf.url));
   }
   if (fileList) {
     fileList.querySelectorAll('.file-row').forEach(row => {
       const idx = parseInt(row.dataset.idx, 10);
-      const sel = _selectedIdxs.has(idx);
+      const pdf = _curFiles[idx];
+      const sel = pdf ? _selectedUrls.has(pdf.url) : false;
       row.classList.toggle('selected', sel);
       const cb = row.querySelector('input[type="checkbox"]');
       if (cb) cb.checked = sel;
@@ -1630,8 +1760,8 @@ document.getElementById('dl-folder-btn').addEventListener('click', () => {
 });
 
 document.getElementById('dl-selected-btn').addEventListener('click', () => {
-  if (!_selectedIdxs.size) return;
-  const pdfs = [..._selectedIdxs].map(i => _curFiles[i]);
+  if (!_selectedUrls.size) return;
+  const pdfs = _allPdfs.filter(p => _selectedUrls.has(p.url));
   triggerZip(pdfs, 'selected.zip');
 });
 
@@ -1640,18 +1770,25 @@ document.getElementById('dl-all-btn').addEventListener('click', () => {
 });
 
 document.getElementById('copy-links-btn').addEventListener('click', async () => {
-  const pdfs = _curFolder ? (_folderMap.get(_curFolder) || []) : _allPdfs;
+  let pdfs, label;
+  if (_selectedUrls.size > 0) {
+    pdfs  = _allPdfs.filter(p => _selectedUrls.has(p.url));
+    label = `${pdfs.length} selected`;
+  } else if (_curFolder) {
+    pdfs  = _folderMap.get(_curFolder) || [];
+    label = `${pdfs.length} from folder`;
+  } else {
+    pdfs  = _allPdfs;
+    label = `${pdfs.length} total`;
+  }
   const text = pdfs.map(p => p.url).join('\n');
   try {
     await navigator.clipboard.writeText(text);
     const btn = document.getElementById('copy-links-btn');
-    btn.textContent = 'Copied!';
-    setTimeout(() => {
-      btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy links`;
-    }, 1800);
-  } catch {
-    alert('Could not access clipboard');
-  }
+    const orig = btn.innerHTML;
+    btn.textContent = `Copied (${label})`;
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  } catch { alert('Could not access clipboard'); }
 });
 
 /* ══════════════════════════════════════════
@@ -1690,7 +1827,23 @@ document.getElementById('folder-search').addEventListener('input', renderFolders
    FILE FILTER
 ══════════════════════════════════════════ */
 document.getElementById('file-filter').addEventListener('input', () => {
-  _selectedIdxs = new Set();
+  renderFileArea();
+});
+
+/* ══════════════════════════════════════════
+   GLOBAL SEARCH
+══════════════════════════════════════════ */
+document.getElementById('global-search').addEventListener('input', function() {
+  _globalSearch = this.value;
+  document.getElementById('gsb-clear').style.display = _globalSearch ? '' : 'none';
+  if (!_globalSearch) document.getElementById('gsb-count').textContent = '';
+  renderFileArea();
+});
+document.getElementById('gsb-clear').addEventListener('click', () => {
+  _globalSearch = '';
+  document.getElementById('global-search').value = '';
+  document.getElementById('gsb-clear').style.display = 'none';
+  document.getElementById('gsb-count').textContent = '';
   renderFileArea();
 });
 
