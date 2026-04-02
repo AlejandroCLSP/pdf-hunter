@@ -10,9 +10,11 @@ import os
 import re
 import time
 import json
+import queue as _queue
 import threading
 import zipfile
 import urllib.parse
+from concurrent.futures import ThreadPoolExecutor
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from collections import deque
 
@@ -32,6 +34,7 @@ HEADERS = {
 }
 
 MAX_PAGES = 300
+N_WORKERS = 12
 
 scan_state = {
     'running': False,
@@ -41,6 +44,15 @@ scan_state = {
     'done': False,
 }
 scan_lock = threading.Lock()
+thread_local = threading.local()
+
+
+def get_session():
+    if not hasattr(thread_local, 'session'):
+        s = requests.Session()
+        s.headers.update(HEADERS)
+        thread_local.session = s
+    return thread_local.session
 
 
 def log(msg, level='info'):
@@ -56,14 +68,6 @@ def reset_state():
         scan_state['pages_checked'] = 0
         scan_state['done'] = False
 
-
-def fetch_page(url, timeout=12):
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=timeout, allow_redirects=True)
-        r.raise_for_status()
-        return r.text
-    except Exception:
-        return None
 
 
 def extract_links(html, base_url):
@@ -199,80 +203,105 @@ def do_scan(start_url, max_depth, same_domain, strict_path, name_filter=''):
         log(f'Pre-filter active: {name_filter}', 'info')
 
     found_pdfs = set()
+    found_lock = threading.Lock()
     visited = set()
-    queue = deque([(start_url, 0)])
+    visited_lock = threading.Lock()
+    cap_logged = [False]
+    stop_event = threading.Event()
+    work_queue = _queue.Queue()
+    work_queue.put((start_url, 0))
 
-    while queue:
-        if not scan_state['running']:
-            log('Stopped by user.', 'error')
-            break
+    def process_url(url, depth):
+        with visited_lock:
+            if url in visited:
+                return
+            visited.add(url)
 
-        if scan_state['pages_checked'] >= MAX_PAGES:
-            log(f'Hit {MAX_PAGES} page cap. Try a more specific URL or lower depth.', 'error')
-            break
-
-        url, depth = queue.popleft()
-
-        if url in visited:
-            continue
-        visited.add(url)
-
-        # Collect PDFs immediately — store raw_name, resolve display names after
         if is_pdf(url):
-            if url not in found_pdfs:
+            with found_lock:
+                if url in found_pdfs:
+                    return
                 found_pdfs.add(url)
-                raw_name = urllib.parse.unquote(url.split('?')[0].rstrip('/').split('/')[-1])
-                if include_terms or exclude_terms:
-                    if not name_matches_filter(raw_name, include_terms, exclude_terms):
-                        log(f'Skipped (filter): {raw_name}')
-                        continue
-                with scan_lock:
-                    scan_state['pdfs'].append({'url': url, 'raw_name': raw_name, 'name': raw_name})
-                    resolve_display_names(scan_state['pdfs'])
-                log(f'PDF: {raw_name}', 'success')
-            continue
+            raw_name = urllib.parse.unquote(url.split('?')[0].rstrip('/').split('/')[-1])
+            if (include_terms or exclude_terms) and not name_matches_filter(raw_name, include_terms, exclude_terms):
+                log(f'Skipped (filter): {raw_name}')
+                return
+            with scan_lock:
+                scan_state['pdfs'].append({'url': url, 'raw_name': raw_name, 'name': raw_name})
+            log(f'PDF: {raw_name}', 'success')
+            return
 
         if not is_crawlable(url) or depth > max_depth:
-            continue
+            return
 
         try:
             link_domain = urllib.parse.urlparse(url).netloc
             root_domain = '.'.join(base_domain.split('.')[-2:])
         except Exception:
-            continue
+            return
 
         if same_domain and link_domain != base_domain:
             if root_domain not in link_domain:
-                continue
+                return
 
         if strict_path and not url_under_start_path(url, start_path):
-            continue
+            return
 
         with scan_lock:
+            if scan_state['pages_checked'] >= MAX_PAGES:
+                if not cap_logged[0]:
+                    cap_logged[0] = True
+                    log(f'Hit {MAX_PAGES} page cap. Try a more specific URL or lower depth.', 'error')
+                return
             scan_state['pages_checked'] += 1
         log(f'[{depth}] {url}')
 
-        html = fetch_page(url)
-        if not html:
+        try:
+            r = get_session().get(url, timeout=12, allow_redirects=True)
+            r.raise_for_status()
+            html = r.text
+        except Exception:
             log(f'Failed: {url}', 'error')
-            continue
+            return
 
         links = extract_links(html, url)
         for link in links:
-            if link in visited:
-                continue
+            with visited_lock:
+                if link in visited:
+                    continue
             if is_pdf(link):
-                queue.appendleft((link, depth))
+                work_queue.put((link, depth))
             elif depth < max_depth:
-                queue.append((link, depth + 1))
+                work_queue.put((link, depth + 1))
 
-        time.sleep(0.05)
+    def worker():
+        while not stop_event.is_set():
+            try:
+                url, depth = work_queue.get(timeout=0.5)
+            except _queue.Empty:
+                continue
+            try:
+                if scan_state['running']:
+                    process_url(url, depth)
+            finally:
+                work_queue.task_done()
 
-    # Final resolve pass once all PDFs are collected
+    threads = [threading.Thread(target=worker, daemon=True) for _ in range(N_WORKERS)]
+    for t in threads:
+        t.start()
+
+    work_queue.join()
+    stop_event.set()
+    for t in threads:
+        t.join(timeout=3)
+
     with scan_lock:
         resolve_display_names(scan_state['pdfs'])
 
-    log(f'Done! {len(found_pdfs)} PDFs found across {scan_state["pages_checked"]} pages.', 'success')
+    if not scan_state['running']:
+        log('Stopped by user.', 'error')
+    else:
+        log(f'Done! {len(found_pdfs)} PDFs found across {scan_state["pages_checked"]} pages.', 'success')
     with scan_lock:
         scan_state['running'] = False
         scan_state['done'] = True
@@ -377,16 +406,22 @@ class Handler(BaseHTTPRequestHandler):
                 return
             urls = url_param.split('|')
             names = name_param.split('|') if name_param else urls
+            def fetch_one(args):
+                    u, n = args
+                    content, _ = download_pdf(u)
+                    return n, content
+
+            with ThreadPoolExecutor(max_workers=8) as ex:
+                results = list(ex.map(fetch_one, zip(urls, names)))
+
             buf = io.BytesIO()
             with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
                 seen_names = {}
-                for url, name in zip(urls, names):
-                    content, _ = download_pdf(url)
+                for name, content in results:
                     if not content:
                         continue
                     if not name.lower().endswith('.pdf'):
                         name += '.pdf'
-                    # Deduplicate filenames inside the zip
                     if name in seen_names:
                         seen_names[name] += 1
                         base, ext = name.rsplit('.', 1)
@@ -439,7 +474,7 @@ if __name__ == '__main__':
 ╔══════════════════════════════════════╗
 ║         PDF HUNTER - READY           ║
 ╠══════════════════════════════════════╣
-║  Open: http://localhost:{PORT}          ║
+║  Open: http://localhost:{PORT}       ║
 ║  Press Ctrl+C to stop                ║
 ╚══════════════════════════════════════╝
 """)
